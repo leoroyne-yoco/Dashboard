@@ -1,10 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Merchant Dashboard — Yoco</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Yoco Merchant Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { colors: { darkBg:'#0f172a', darkCard:'#1e293b', darkBorder:'#334155' } } }
+  }
+  if (localStorage.theme === 'light') document.documentElement.classList.replace('dark','light');
+</script>
 
 <!-- Firebase -->
 <script type="module">
@@ -13,720 +24,712 @@
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   const firebaseConfig = {
-    apiKey: "AIzaSyAUyWmw_8mw2uNuusYu3TF9flpqPOWa71s",
-    authDomain: "yoco-pos-dashbord.firebaseapp.com",
-    projectId: "yoco-pos-dashbord",
-    storageBucket: "yoco-pos-dashbord.firebasestorage.app",
-    messagingSenderId: "633313593449",
-    appId: "1:633313593449:web:a9ed814bc0b72de0043af8",
-    measurementId: "G-8KM0SSYRKH"
+    apiKey:"AIzaSyAUyWmw_8mw2uNuusYu3TF9flpqPOWa71s",
+    authDomain:"yoco-pos-dashbord.firebaseapp.com",
+    projectId:"yoco-pos-dashbord",
+    storageBucket:"yoco-pos-dashbord.firebasestorage.app",
+    messagingSenderId:"633313593449",
+    appId:"1:633313593449:web:a9ed814bc0b72de0043af8",
+    measurementId:"G-8KM0SSYRKH"
   };
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
   const db = getFirestore(app);
   window._fb = {
-    track(n, p={}) { try { logEvent(analytics, n, p); } catch(e){} },
-    async saveSession(s, k) { try { await addDoc(collection(db,'sessions'),{status:s,keyPrefix:k,ts:serverTimestamp()}); } catch(e){} },
-    async saveSnapshot(stats) { try { await addDoc(collection(db,'snapshots'),{...stats,ts:serverTimestamp()}); } catch(e){} },
-    async getSnapshots(n=10) { try { const q=query(collection(db,'snapshots'),orderBy('ts','desc'),limit(n)); const s=await getDocs(q); return s.docs.map(d=>({id:d.id,...d.data()})); } catch(e){ return []; } }
+    track(n,p={}){try{logEvent(analytics,n,p);}catch(e){}},
+    async saveSession(s,k){try{await addDoc(collection(db,'sessions'),{status:s,keyPrefix:k,ts:serverTimestamp()});}catch(e){}},
+    async saveSnapshot(stats){try{await addDoc(collection(db,'snapshots'),{...stats,ts:serverTimestamp()});}catch(e){}}
   };
-  window._fbReady = true;
+  window._fbReady=true;
 </script>
 
 <style>
-:root {
-  --bg: #080b0f;
-  --surface: #0e1117;
-  --card: #131820;
-  --card2: #171e28;
-  --border: #1c2433;
-  --border2: #243040;
-  --accent: #00c896;
-  --accent-dim: rgba(0,200,150,0.08);
-  --orange: #ff7043;
-  --orange-dim: rgba(255,112,67,0.08);
-  --purple: #7c6af7;
-  --purple-dim: rgba(124,106,247,0.08);
-  --blue: #3b9af8;
-  --blue-dim: rgba(59,154,248,0.08);
-  --yellow: #f5c842;
-  --yellow-dim: rgba(245,200,66,0.08);
-  --text: #dde4ef;
-  --muted: #556070;
-  --muted2: #3d4d5e;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --sidebar-w: 220px;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
-
-/* ── SIDEBAR ── */
-.sidebar{
-  position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
-  background:var(--surface);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;z-index:100;
-}
-.logo{padding:22px 20px 18px;border-bottom:1px solid var(--border)}
-.logo-mark{font-size:18px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.logo-sub{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
-
-.nav-group{padding:14px 0 4px}
-.nav-group-label{padding:0 20px 6px;font-size:9px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:1.5px}
-.nav-item{
-  display:flex;align-items:center;gap:9px;
-  padding:9px 20px;cursor:pointer;color:var(--muted);
-  font-size:13px;font-weight:600;transition:all 0.15s;
-  border-left:2px solid transparent;
-}
-.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.025)}
-.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-dim)}
-.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
-.nav-divider{height:1px;background:var(--border);margin:8px 16px}
-
-.sidebar-bottom{margin-top:auto;padding:14px 20px;border-top:1px solid var(--border)}
-.conn-status{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);flex-shrink:0}
-.status-dot.live{background:var(--success);box-shadow:0 0 6px var(--success);animation:pulse 2s infinite}
-.status-dot.error{background:var(--danger);box-shadow:0 0 6px var(--danger)}
-.status-dot.connecting{background:var(--warning);animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.conn-label{font-size:11px;font-weight:700;color:var(--muted)}
-.fb-row{display:flex;align-items:center;gap:6px;margin-top:6px}
-.fb-dot{width:5px;height:5px;border-radius:50%;background:var(--muted2)}
-.fb-dot.ready{background:var(--accent)}
-.fb-label{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace}
-
-/* ── MAIN ── */
-.main{margin-left:var(--sidebar-w);padding:28px 32px;min-height:100vh}
-.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px}
-.page-title{font-size:22px;font-weight:800;letter-spacing:-0.5px}
-.page-sub{font-size:12px;color:var(--muted);margin-top:3px}
-.topbar-right{display:flex;gap:10px;align-items:center;flex-shrink:0}
-
-/* ── BUTTONS ── */
-.btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;transition:all 0.15s;white-space:nowrap}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
-.btn-primary{background:var(--accent);color:#000}
-.btn-primary:hover:not(:disabled){background:#00e8ae;transform:translateY(-1px)}
-.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text)}
-.btn-outline:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-sm{padding:6px 13px;font-size:11px}
-.btn-ghost{background:transparent;border:none;color:var(--muted);padding:6px 10px;font-size:12px}
-.btn-ghost:hover{color:var(--text)}
-
-/* ── SECTIONS ── */
-.section{display:none}
-.section.active{display:block}
-
-/* ── STAT CARDS ── */
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
-.kpi{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:10px;padding:18px;position:relative;overflow:hidden;
-  transition:border-color 0.2s;
-}
-.kpi:hover{border-color:var(--border2)}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-.kpi.k-green::before{background:linear-gradient(90deg,var(--accent),transparent)}
-.kpi.k-orange::before{background:linear-gradient(90deg,var(--orange),transparent)}
-.kpi.k-purple::before{background:linear-gradient(90deg,var(--purple),transparent)}
-.kpi.k-blue::before{background:linear-gradient(90deg,var(--blue),transparent)}
-.kpi.k-yellow::before{background:linear-gradient(90deg,var(--yellow),transparent)}
-.kpi-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.kpi-value{font-size:24px;font-weight:800;letter-spacing:-0.5px;line-height:1}
-.kpi-value.mono{font-family:'JetBrains Mono',monospace;font-size:18px}
-.kpi-sub{font-size:10px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:4px}
-.kpi-trend-up{color:var(--success)}
-.kpi-trend-down{color:var(--danger)}
-
-/* ── GRID LAYOUTS ── */
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
-.grid-main-side{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:20px}
-@media(max-width:1100px){.grid-main-side{grid-template-columns:1fr}.grid-3{grid-template-columns:1fr 1fr}}
-@media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:16px}.grid-2{grid-template-columns:1fr}}
-
-/* ── PANELS ── */
-.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
-.panel-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
-.panel-title-text{display:flex;align-items:center;gap:7px}
-
-/* ── TABLE CARD ── */
-.table-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
-.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.table-title{font-size:14px;font-weight:700}
-.table-sub{font-size:11px;color:var(--muted);margin-top:2px}
-.table-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-table{width:100%;border-collapse:collapse}
-thead th{padding:10px 16px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;text-align:left;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.15);white-space:nowrap}
-tbody tr{border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.1s}
-tbody tr:hover{background:rgba(255,255,255,0.025)}
-tbody tr:last-child{border-bottom:none}
-td{padding:12px 16px;font-size:12px;vertical-align:middle}
-
-/* ── BADGES ── */
-.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
-.badge-success{background:rgba(34,197,94,0.1);color:var(--success)}
-.badge-warning{background:rgba(245,158,11,0.1);color:var(--warning)}
-.badge-danger{background:rgba(239,68,68,0.1);color:var(--danger)}
-.badge-info{background:rgba(59,154,248,0.1);color:var(--blue)}
-.badge-purple{background:var(--purple-dim);color:var(--purple)}
-.badge-muted{background:rgba(85,96,112,0.15);color:var(--muted)}
-.badge-orange{background:var(--orange-dim);color:var(--orange)}
-
-/* ── FILTERS ── */
-.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
-.filter-input,.filter-select{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);font-family:'Syne',sans-serif;outline:none;transition:border-color 0.2s}
-.filter-input:focus,.filter-select:focus{border-color:var(--accent)}
-.filter-select option{background:var(--bg)}
-
-/* ── CHARTS (CSS bar) ── */
-.bar-chart{display:flex;align-items:flex-end;gap:5px;height:80px;padding-top:4px}
-.bc-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
-.bc-bar{width:100%;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),rgba(0,200,150,0.2));transition:height 0.5s cubic-bezier(0.4,0,0.2,1);min-height:2px;cursor:pointer}
-.bc-bar.orange{background:linear-gradient(180deg,var(--orange),rgba(255,112,67,0.2))}
-.bc-bar:hover{filter:brightness(1.2)}
-.bc-label{font-size:8px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center}
-
-/* ── DONUT (CSS) ── */
-.donut-wrap{display:flex;align-items:center;gap:20px}
-.donut{width:80px;height:80px;border-radius:50%;flex-shrink:0;position:relative}
-.donut-legend{flex:1;display:flex;flex-direction:column;gap:6px}
-.donut-item{display:flex;align-items:center;gap:7px;font-size:11px}
-.donut-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.donut-name{color:var(--muted);flex:1}
-.donut-val{font-weight:700;font-family:'JetBrains Mono',monospace;font-size:10px}
-
-/* ── DETAIL ROWS ── */
-.detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
-.detail-row:last-child{border-bottom:none}
-.detail-key{font-size:11px;color:var(--muted);font-weight:600;flex-shrink:0;width:140px}
-.detail-val{font-size:12px;text-align:right;word-break:break-all;font-family:'JetBrains Mono',monospace}
-
-/* ── DRAWER ── */
-.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:none;opacity:0;transition:opacity 0.25s}
-.drawer-overlay.open{display:flex;opacity:1}
-.drawer{position:fixed;right:0;top:0;bottom:0;width:440px;background:var(--surface);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);overflow-y:auto;padding:24px}
-.drawer.open{transform:translateX(0)}
-
-/* ── TOAST ── */
-.toast-container{position:fixed;top:18px;right:18px;z-index:999;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px 16px;font-size:12px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,0.5);min-width:240px;max-width:340px}
-.toast.success{border-left:3px solid var(--success)}
-.toast.error{border-left:3px solid var(--danger)}
-.toast.info{border-left:3px solid var(--accent)}
-@keyframes toastIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
-.toast{animation:toastIn 0.25s ease}
-
-/* ── EMPTY ── */
-.empty{text-align:center;padding:40px 20px;color:var(--muted)}
-.empty-icon{font-size:32px;margin-bottom:10px;opacity:0.3}
-.empty-text{font-size:13px}
-
-/* ── SETTINGS PANEL ── */
-.settings-section{max-width:560px}
-.settings-group{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
-.settings-group-title{padding:14px 18px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.1)}
-.settings-row{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid rgba(255,255,255,0.04)}
-.settings-row:last-child{border-bottom:none}
-.settings-label{font-size:13px;font-weight:600}
-.settings-desc{font-size:11px;color:var(--muted);margin-top:2px}
-.settings-control{flex-shrink:0}
-.key-field{display:flex;gap:8px;align-items:center;flex:1;max-width:360px}
-.key-field input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);outline:none;transition:border-color 0.2s;min-width:0}
-.key-field input:focus{border-color:var(--accent)}
-
-/* ── PAGINATION ── */
-.pagination{display:flex;align-items:center;gap:6px;padding:14px 18px;border-top:1px solid var(--border)}
-.page-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
-.page-btn:hover{border-color:var(--accent);color:var(--accent)}
-.page-info{font-size:11px;color:var(--muted);margin-left:auto}
-
-/* ── HOUR HEATMAP ── */
-.heatmap{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:8px}
-.hm-cell{height:22px;border-radius:3px;background:var(--border);transition:background 0.3s;cursor:pointer;position:relative}
-.hm-cell:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#000;color:#fff;font-size:9px;padding:3px 7px;border-radius:4px;white-space:nowrap;z-index:10;pointer-events:none}
-.hm-label-row{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:3px}
-.hm-label{font-size:8px;color:var(--muted);text-align:center;font-family:'JetBrains Mono',monospace}
-
-/* ── METRIC COMPARISON ── */
-.metric-bar-row{display:flex;flex-direction:column;gap:10px;margin-top:8px}
-.mb-item{display:flex;flex-direction:column;gap:4px}
-.mb-header{display:flex;justify-content:space-between;font-size:11px}
-.mb-name{color:var(--muted);font-weight:600}
-.mb-val{font-weight:700;font-family:'JetBrains Mono',monospace}
-.mb-track{height:6px;background:var(--border2);border-radius:3px;overflow:hidden}
-.mb-fill{height:100%;border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1)}
-
-/* ── TABS ── */
-.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px;width:fit-content;margin-bottom:18px}
-.tab{padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);transition:all 0.15s;border:none;background:transparent}
-.tab.active{background:var(--accent);color:#000}
-.tab:hover:not(.active){color:var(--text)}
-
-/* ── FORM ── */
-.form-group{display:flex;flex-direction:column;gap:5px}
-.form-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
-.form-input{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'JetBrains Mono',monospace;outline:none;transition:border-color 0.2s}
-.form-input:focus{border-color:var(--accent)}
-.form-grid{display:grid;gap:12px}
-
-/* ── CONNECT ERROR ── */
-#connectErrorPanel{background:#150808;border:1px solid var(--danger);border-radius:10px;padding:16px;margin-bottom:20px;font-size:12px;line-height:1.6}
+  body { font-family: 'Inter', sans-serif; }
+  .stat-label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; }
+  .stat-value { font-size:26px; font-weight:900; line-height:1.1; }
+  html.dark .stat-value { color:#f8fafc; }
+  html.light .stat-value { color:#0f172a; }
+  .sidebar { width:240px; flex-shrink:0; }
+  .nav-link { display:flex; align-items:center; gap:10px; padding:9px 14px; border-radius:10px; font-size:13px; font-weight:600; color:#64748b; cursor:pointer; transition:all .15s; }
+  .nav-link:hover { background:rgba(99,102,241,.08); color:#6366f1; }
+  .nav-link.active { background:rgba(99,102,241,.12); color:#6366f1; }
+  html.dark .nav-link.active { background:rgba(99,102,241,.15); color:#818cf8; }
+  .nav-section-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#94a3b8; padding:16px 14px 6px; }
+  .kpi-card { transition:box-shadow .2s; }
+  .kpi-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.08); }
+  html.dark .kpi-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.3); }
+  .status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .status-dot.live { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.2); animation:pulse 2s infinite; }
+  .status-dot.error { background:#ef4444; }
+  .status-dot.connecting { background:#f59e0b; animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .tab-btn { padding:10px 4px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; border-bottom:2px solid transparent; color:#94a3b8; transition:all .2s; cursor:pointer; white-space:nowrap; background:none; border-left:none; border-right:none; border-top:none; }
+  .tab-btn.active { border-bottom-color:#6366f1; color:#6366f1; }
+  html.dark .tab-btn.active { color:#818cf8; border-bottom-color:#818cf8; }
+  .tab-btn:hover:not(.active) { color:#6366f1; }
+  .method-bar-track { height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; }
+  html.dark .method-bar-track { background:#334155; }
+  .method-bar-fill { height:100%; border-radius:3px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+  .section { display:none; }
+  .section.active { display:block; }
+  .toast { font-family:'Inter',sans-serif; animation:toastIn .25s ease; }
+  @keyframes toastIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+  html.dark ::-webkit-scrollbar-thumb { background:#334155; }
+  .chart-container { position:relative; }
+  /* Settings */
+  .settings-row { display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid; gap:16px; }
+  html.dark .settings-row { border-color:#334155; }
+  html.light .settings-row { border-color:#e2e8f0; }
+  .settings-row:last-child { border-bottom:none; }
 </style>
 </head>
-<body>
-
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="logo">
-    <div class="logo-mark">YOCO DASH</div>
-    <div class="logo-sub">Merchant Intelligence</div>
-  </div>
-  <nav style="flex:1;overflow-y:auto">
-    <div class="nav-group">
-      <div class="nav-group-label">Business</div>
-      <div class="nav-item active" data-section="overview" onclick="showSection('overview')">
-        <span class="nav-icon">◈</span> Dashboard
-      </div>
-      <div class="nav-item" data-section="sales" onclick="showSection('sales')">
-        <span class="nav-icon">↗</span> Sales
-      </div>
-      <div class="nav-item" data-section="transactions" onclick="showSection('transactions')">
-        <span class="nav-icon">⬡</span> Transactions
-      </div>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-group">
-      <div class="nav-group-label">Finance</div>
-      <div class="nav-item" data-section="payouts" onclick="showSection('payouts')">
-        <span class="nav-icon">⬖</span> Payouts
-      </div>
-      <div class="nav-item" data-section="refunds" onclick="showSection('refunds')">
-        <span class="nav-icon">↩</span> Refunds
-      </div>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-group">
-      <div class="nav-group-label">Operations</div>
-      <div class="nav-item" data-section="orders" onclick="showSection('orders')">
-        <span class="nav-icon">◉</span> Orders
-      </div>
-      <div class="nav-item" data-section="links" onclick="showSection('links')">
-        <span class="nav-icon">⊛</span> Payment Links
-      </div>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-group">
-      <div class="nav-group-label">Developer</div>
-      <div class="nav-item" data-section="raw" onclick="showSection('raw')">
-        <span class="nav-icon">⌨</span> Raw Query
-      </div>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-group">
-      <div class="nav-group-label">Config</div>
-      <div class="nav-item" data-section="settings" onclick="showSection('settings')">
-        <span class="nav-icon">⚙</span> Settings
-      </div>
-    </div>
-  </nav>
-  <div class="sidebar-bottom">
-    <div class="conn-status">
-      <div class="status-dot" id="statusDot"></div>
-      <span class="conn-label" id="statusText">Not connected</span>
-    </div>
-    <div class="fb-row">
-      <div class="fb-dot" id="fbDot"></div>
-      <span class="fb-label" id="fbText">Firebase loading…</span>
-    </div>
-  </div>
-</aside>
+<body class="dark:bg-darkBg bg-slate-50 dark:text-slate-100 text-slate-900 min-h-screen">
 
 <!-- TOAST -->
-<div class="toast-container" id="toastContainer"></div>
+<div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
 
-<!-- DRAWER -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()">
-  <div class="drawer" id="drawer" onclick="event.stopPropagation()">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <div>
-        <div style="font-size:16px;font-weight:800" id="drawerTitle">Details</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px" id="drawerId"></div>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="closeDrawer()">✕</button>
+<!-- DRAWER OVERLAY -->
+<div id="drawerOverlay" class="fixed inset-0 z-40 hidden" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px)" onclick="closeDrawer()">
+  <div id="drawer" onclick="event.stopPropagation()" class="absolute right-0 top-0 bottom-0 w-[420px] bg-white dark:bg-darkCard border-l dark:border-darkBorder shadow-2xl overflow-y-auto p-6 translate-x-full transition-transform duration-300">
+    <div class="flex justify-between items-start mb-5">
+      <div><h3 class="text-lg font-black" id="drawerTitle">Details</h3><p class="text-xs text-slate-400 font-mono mt-1" id="drawerId"></p></div>
+      <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
     </div>
     <div id="drawerContent"></div>
   </div>
 </div>
 
-<!-- MAIN -->
-<main class="main">
-  <div class="topbar">
-    <div>
-      <div class="page-title" id="pageTitle">Dashboard</div>
-      <div class="page-sub" id="pageSub">Retail &amp; Hospitality Overview</div>
-    </div>
-    <div class="topbar-right">
-      <span id="lastRefreshed" style="font-size:11px;color:var(--muted)"></span>
-      <button class="btn btn-outline btn-sm" onclick="refreshAll()">↺ Refresh</button>
-    </div>
-  </div>
+<!-- APP SHELL -->
+<div class="flex min-h-screen">
 
-  <!-- ═══════════ OVERVIEW ═══════════ -->
-  <div class="section active" id="section-overview">
-
-    <div class="kpi-row" id="kpiRow">
-      <div class="kpi k-green">
-        <div class="kpi-label">Total Revenue</div>
-        <div class="kpi-value mono" id="kpiRevenue">—</div>
-        <div class="kpi-sub"><span id="kpiPaymentCount">—</span> payments</div>
-      </div>
-      <div class="kpi k-orange">
-        <div class="kpi-label">Avg Transaction</div>
-        <div class="kpi-value mono" id="kpiAvgTx">—</div>
-        <div class="kpi-sub">per sale</div>
-      </div>
-      <div class="kpi k-blue">
-        <div class="kpi-label">Successful Rate</div>
-        <div class="kpi-value" id="kpiSuccessRate">—</div>
-        <div class="kpi-sub">of all payments</div>
-      </div>
-      <div class="kpi k-purple">
-        <div class="kpi-label">Total Payouts</div>
-        <div class="kpi-value mono" id="kpiPayouts">—</div>
-        <div class="kpi-sub" id="kpiPayoutCount">— payouts</div>
-      </div>
-      <div class="kpi k-yellow">
-        <div class="kpi-label">Refund Rate</div>
-        <div class="kpi-value" id="kpiRefundRate">—</div>
-        <div class="kpi-sub" id="kpiRefundAmount">—</div>
-      </div>
-    </div>
-
-    <div class="grid-main-side">
-      <div class="panel">
-        <div class="panel-title">
-          <span class="panel-title-text">📊 Daily Revenue</span>
-          <div class="tabs" style="margin:0">
-            <button class="tab active" onclick="setChartMode('revenue',this)">Revenue</button>
-            <button class="tab" onclick="setChartMode('volume',this)">Volume</button>
-          </div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar fixed top-0 left-0 bottom-0 bg-white dark:bg-darkCard border-r dark:border-darkBorder flex flex-col z-30 overflow-y-auto">
+    <!-- Logo -->
+    <div class="px-5 py-5 border-b dark:border-darkBorder">
+      <div class="flex items-center gap-2 mb-1">
+        <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </div>
-        <div class="bar-chart" id="dailyChart"><div style="color:var(--muted);font-size:12px;margin:auto">Connect to load</div></div>
-        <div class="hm-label-row" id="dailyLabels"></div>
+        <span class="font-black text-base tracking-tight">Yoco Dash</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:16px">
-        <div class="panel" style="flex:1">
-          <div class="panel-title"><span class="panel-title-text">💳 Payment Methods</span></div>
-          <div id="methodBreakdown"><div style="color:var(--muted);font-size:12px">No data</div></div>
-        </div>
-        <div class="panel" style="flex:1">
-          <div class="panel-title"><span class="panel-title-text">🕐 Peak Hours</span></div>
-          <div class="heatmap" id="peakHours"></div>
-          <div class="hm-label-row" id="peakHourLabels"></div>
-        </div>
-      </div>
+      <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Merchant Intelligence</p>
     </div>
 
-    <div class="grid-2">
-      <div class="panel">
-        <div class="panel-title"><span class="panel-title-text">🏪 Retail vs Hospitality</span></div>
-        <div id="segmentBreakdown"><div style="color:var(--muted);font-size:12px">Connect to analyse</div></div>
+    <!-- Nav -->
+    <nav class="flex-1 p-3 space-y-0.5">
+      <div class="nav-section-label">Business</div>
+      <div class="nav-link active" data-section="overview" onclick="showSection('overview')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+        Dashboard
       </div>
-      <div class="panel">
-        <div class="panel-title"><span class="panel-title-text">⚡ Recent Transactions</span></div>
-        <div id="recentTx"><div style="color:var(--muted);font-size:12px">Connect to see activity</div></div>
+      <div class="nav-link" data-section="sales" onclick="showSection('sales')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        Sales Report
       </div>
-    </div>
+      <div class="nav-link" data-section="transactions" onclick="showSection('transactions')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Transactions
+      </div>
+      <div class="nav-section-label">Finance</div>
+      <div class="nav-link" data-section="payouts" onclick="showSection('payouts')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+        Payouts
+      </div>
+      <div class="nav-link" data-section="refunds" onclick="showSection('refunds')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+        Refunds
+      </div>
+      <div class="nav-section-label">Operations</div>
+      <div class="nav-link" data-section="orders" onclick="showSection('orders')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        Orders
+      </div>
+      <div class="nav-section-label">Developer</div>
+      <div class="nav-link" data-section="raw" onclick="showSection('raw')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Raw Query
+      </div>
+      <div class="nav-section-label">Config</div>
+      <div class="nav-link" data-section="settings" onclick="showSection('settings')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Settings
+      </div>
+    </nav>
 
-    <div class="table-card">
-      <div class="table-header">
-        <div><div class="table-title">Today's Transactions</div><div class="table-sub" id="todayCount">—</div></div>
-        <button class="btn btn-outline btn-sm" onclick="exportCSV('payments')">⬇ Export</button>
+    <!-- Bottom status -->
+    <div class="p-4 border-t dark:border-darkBorder space-y-2">
+      <div class="flex items-center gap-2">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="text-xs font-bold text-slate-500" id="statusText">Not connected</span>
       </div>
-      <div id="todayTable"><div class="empty"><div class="empty-icon">◈</div><div class="empty-text">Connect to load data</div></div></div>
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" id="fbDot"></div>
+        <span class="text-[10px] font-mono text-slate-400" id="fbText">Firebase loading…</span>
+      </div>
+      <button onclick="toggleTheme()" class="w-full mt-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+        <svg class="w-3.5 h-3.5 hidden dark:block text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+        <svg class="w-3.5 h-3.5 block dark:hidden text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        Toggle theme
+      </button>
     </div>
-  </div>
+  </aside>
 
-  <!-- ═══════════ SALES ═══════════ -->
-  <div class="section" id="section-sales">
-    <div class="kpi-row">
-      <div class="kpi k-green">
-        <div class="kpi-label">Gross Revenue</div>
-        <div class="kpi-value mono" id="salesGross">—</div>
-      </div>
-      <div class="kpi k-orange">
-        <div class="kpi-label">Net (after refunds)</div>
-        <div class="kpi-value mono" id="salesNet">—</div>
-      </div>
-      <div class="kpi k-blue">
-        <div class="kpi-label">Card Sales</div>
-        <div class="kpi-value mono" id="salesCard">—</div>
-      </div>
-      <div class="kpi k-purple">
-        <div class="kpi-label">Other Methods</div>
-        <div class="kpi-value mono" id="salesOther">—</div>
-      </div>
-    </div>
-    <div class="grid-2">
-      <div class="panel">
-        <div class="panel-title"><span class="panel-title-text">📈 Revenue by Day of Week</span></div>
-        <div class="bar-chart" id="dowChart"></div>
-        <div class="hm-label-row" id="dowLabels"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-title"><span class="panel-title-text">💰 Transaction Size Bands</span></div>
-        <div class="metric-bar-row" id="sizeBands"></div>
-      </div>
-    </div>
-    <div class="table-card">
-      <div class="table-header">
-        <div><div class="table-title">Sales Ledger</div><div class="table-sub" id="salesCount">All successful payments</div></div>
-        <div class="table-controls">
-          <input class="filter-input" id="salesSearch" placeholder="🔍 Search…" oninput="filterSales()">
-          <select class="filter-select" id="salesMethod" onchange="filterSales()">
-            <option value="">All Methods</option>
-            <option value="card">Card</option>
-            <option value="cash">Cash</option>
-            <option value="instant_eft">Instant EFT</option>
-            <option value="gift_voucher">Gift Voucher</option>
-          </select>
-          <button class="btn btn-outline btn-sm" onclick="exportCSV('payments')">⬇ CSV</button>
-        </div>
-      </div>
-      <div id="salesTable"><div class="empty"><div class="empty-icon">↗</div><div class="empty-text">No data</div></div></div>
-      <div class="pagination" id="salesPagination" style="display:none">
-        <button class="page-btn" onclick="changePage('sales',-1)">‹</button>
-        <span id="salesPageInfo" class="page-info"></span>
-        <button class="page-btn" onclick="changePage('sales',1)">›</button>
-      </div>
-    </div>
-  </div>
+  <!-- MAIN -->
+  <main class="flex-1 ml-[240px] min-h-screen">
 
-  <!-- ═══════════ TRANSACTIONS ═══════════ -->
-  <div class="section" id="section-transactions">
-    <div class="filter-bar">
-      <input class="filter-input" id="txSearch" placeholder="🔍 ID, reference, amount…" oninput="filterTx()">
-      <select class="filter-select" id="txStatus" onchange="filterTx()">
-        <option value="">All Statuses</option>
-        <option value="successful">Successful</option>
-        <option value="failed">Failed</option>
-        <option value="pending">Pending</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
-      <select class="filter-select" id="txMethod" onchange="filterTx()">
-        <option value="">All Methods</option>
-        <option value="card">Card</option>
-        <option value="cash">Cash</option>
-        <option value="instant_eft">Instant EFT</option>
-      </select>
-      <button class="btn btn-outline btn-sm" onclick="exportCSV('payments')">⬇ Export</button>
-    </div>
-    <div class="table-card">
-      <div class="table-header">
-        <div><div class="table-title">All Transactions</div><div class="table-sub" id="txCount">Connect to load</div></div>
-        <button class="btn btn-outline btn-sm" onclick="loadPayments()">↺ Reload</button>
-      </div>
-      <div id="txTable"><div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No data</div></div></div>
-      <div class="pagination" id="txPagination" style="display:none">
-        <button class="page-btn" onclick="changePage('tx',-1)">‹</button>
-        <span id="txPageInfo" class="page-info"></span>
-        <button class="page-btn" onclick="changePage('tx',1)">›</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════ PAYOUTS ═══════════ -->
-  <div class="section" id="section-payouts">
-    <div class="kpi-row">
-      <div class="kpi k-green">
-        <div class="kpi-label">Total Paid Out</div>
-        <div class="kpi-value mono" id="payoutTotal">—</div>
-      </div>
-      <div class="kpi k-blue">
-        <div class="kpi-label">Avg Payout</div>
-        <div class="kpi-value mono" id="payoutAvg">—</div>
-      </div>
-      <div class="kpi k-orange">
-        <div class="kpi-label">Total Payouts</div>
-        <div class="kpi-value" id="payoutCount">—</div>
-      </div>
-    </div>
-    <div class="table-card">
-      <div class="table-header">
-        <div><div class="table-title">Payout History</div><div class="table-sub" id="payoutsCountSub">Connect to load</div></div>
-        <button class="btn btn-outline btn-sm" onclick="loadPayouts()">↺ Reload</button>
-      </div>
-      <div id="payoutsTable"><div class="empty"><div class="empty-icon">⬖</div><div class="empty-text">No data</div></div></div>
-    </div>
-  </div>
-
-  <!-- ═══════════ REFUNDS ═══════════ -->
-  <div class="section" id="section-refunds">
-    <div class="kpi-row">
-      <div class="kpi k-orange">
-        <div class="kpi-label">Total Refunded</div>
-        <div class="kpi-value mono" id="refundTotal">—</div>
-      </div>
-      <div class="kpi k-blue">
-        <div class="kpi-label">No. of Refunds</div>
-        <div class="kpi-value" id="refundCount">—</div>
-      </div>
-      <div class="kpi k-purple">
-        <div class="kpi-label">Avg Refund</div>
-        <div class="kpi-value mono" id="refundAvg">—</div>
-      </div>
-    </div>
-    <div class="grid-2">
-      <div class="panel">
-        <div class="panel-title"><span class="panel-title-text">↩ Process a Refund</span></div>
-        <div class="form-grid">
-          <div class="form-group">
-            <div class="form-label">Payment ID</div>
-            <input class="form-input" id="refundPaymentId" placeholder="pay_xxxxxxxx">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Amount in cents (blank = full refund)</div>
-            <input class="form-input" id="refundAmount" type="number" placeholder="e.g. 5000 = R50.00">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Reason</div>
-            <input class="form-input" id="refundReason" placeholder="Customer request, quality issue…">
-          </div>
-          <button class="btn btn-danger" onclick="createRefund()">Process Refund</button>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-title"><span class="panel-title-text">📋 Refund Breakdown by Method</span></div>
-        <div id="refundMethodBreak"><div style="color:var(--muted);font-size:12px">Load refunds to see breakdown</div></div>
-      </div>
-    </div>
-    <div class="table-card">
-      <div class="table-header">
-        <div><div class="table-title">Refund History</div><div class="table-sub" id="refundsCountSub">Connect to load</div></div>
-        <button class="btn btn-outline btn-sm" onclick="loadRefunds()">↺ Reload</button>
-      </div>
-      <div id="refundsTable"><div class="empty"><div class="empty-icon">↩</div><div class="empty-text">No data</div></div></div>
-    </div>
-  </div>
-
-  <!-- ═══════════ ORDERS ═══════════ -->
-  <div class="section" id="section-orders">
-    <div class="filter-bar">
-      <input class="filter-input" id="orderSearch" placeholder="🔍 Search orders…" oninput="filterOrders()">
-      <select class="filter-select" id="orderStatus" onchange="filterOrders()">
-        <option value="">All Statuses</option>
-        <option value="open">Open</option>
-        <option value="complete">Complete</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
-      <button class="btn btn-outline btn-sm" onclick="exportCSV('orders')">⬇ Export</button>
-    </div>
-    <div class="table-card">
-      <div class="table-header">
-        <div><div class="table-title">Orders</div><div class="table-sub" id="ordersCountSub">Connect to load</div></div>
-        <button class="btn btn-outline btn-sm" onclick="loadOrders()">↺ Reload</button>
-      </div>
-      <div id="ordersTable"><div class="empty"><div class="empty-icon">◉</div><div class="empty-text">No data</div></div></div>
-    </div>
-  </div>
-
-  <!-- ═══════════ PAYMENT LINKS ═══════════ -->
-  <div class="section" id="section-links">
-    <div class="panel" style="max-width:500px">
-      <div class="panel-title"><span class="panel-title-text">⊛ Fetch Payment Link</span></div>
-      <div style="display:flex;gap:8px">
-        <input class="filter-input" id="plinkId" placeholder="Payment link ID…" style="flex:1">
-        <button class="btn btn-primary" onclick="fetchPaymentLink()">Fetch</button>
-      </div>
-      <div id="plinkResult" style="margin-top:14px"></div>
-    </div>
-  </div>
-
-  <!-- ═══════════ RAW QUERY ═══════════ -->
-  <div class="section" id="section-raw">
-    <div class="panel">
-      <div class="panel-title"><span class="panel-title-text">⌨ Raw API Query</span></div>
-      <div style="display:grid;gap:12px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select class="filter-select" id="rawMethod"><option>GET</option><option>POST</option></select>
-          <input class="filter-input" id="rawEndpoint" placeholder="/v1/payments" style="flex:1;min-width:200px" value="/v1/payments">
-          <button class="btn btn-primary" onclick="rawQuery()">Execute →</button>
-        </div>
+    <!-- ═══ OVERVIEW ═══ -->
+    <div class="section active p-6 md:p-8 max-w-[1400px]" id="section-overview">
+      <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
         <div>
-          <div class="form-label" style="margin-bottom:5px">Request Body (POST only)</div>
-          <textarea class="form-input" id="rawBody" style="height:70px;resize:vertical;width:100%" placeholder='{"key":"value"}'></textarea>
+          <h1 class="text-2xl font-black tracking-tight">Dashboard</h1>
+          <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
+            <span id="lastRefreshed">Retail &amp; Hospitality Overview</span>
+          </p>
         </div>
-        <div>
-          <div class="form-label" style="margin-bottom:5px">Response</div>
-          <pre id="rawResponse" style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:11px;overflow:auto;max-height:420px;color:var(--text);line-height:1.5">— execute a query —</pre>
+        <div class="flex gap-3 flex-wrap">
+          <button onclick="refreshAll()" class="flex items-center gap-2 px-4 py-2.5 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh
+          </button>
+          <button onclick="exportCSV('payments')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Export
+          </button>
+        </div>
+      </header>
+
+      <!-- 7 KPI Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-indigo-50/50 dark:from-darkCard dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Gross Revenue</p>
+          <p class="stat-value text-indigo-600 dark:text-indigo-400" id="kpiGross">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiTxCount">0 transactions</p>
+        </div>
+        <div class="kpi-card p-5 bg-white dark:bg-darkCard border border-slate-100 dark:border-darkBorder shadow-sm rounded-2xl">
+          <p class="stat-label">Est. VAT (15%)</p>
+          <p class="stat-value" id="kpiVAT">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">Tax component</p>
+        </div>
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-orange-50/50 dark:from-darkCard dark:to-orange-900/10 border border-orange-100 dark:border-orange-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Avg Ticket</p>
+          <p class="stat-value text-orange-500" id="kpiAvg">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">Per sale</p>
+        </div>
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Refunds</p>
+          <p class="stat-value text-rose-500" id="kpiRefunds">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiRefundCount">0 refunds</p>
+        </div>
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-emerald-50/50 dark:from-darkCard dark:to-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Success Rate</p>
+          <p class="stat-value text-emerald-500" id="kpiSuccessRate">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">Payments</p>
+        </div>
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-violet-50/50 dark:from-darkCard dark:to-violet-900/10 border border-violet-100 dark:border-violet-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Total Payouts</p>
+          <p class="stat-value text-violet-500" id="kpiPayouts">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiPayoutCount">0 payouts</p>
+        </div>
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-slate-50 dark:from-darkCard dark:to-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl">
+          <p class="stat-label">Net Revenue</p>
+          <p class="stat-value" id="kpiNet">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">After refunds</p>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- ═══════════ SETTINGS ═══════════ -->
-  <div class="section" id="section-settings">
-    <div class="settings-section">
-
-      <div class="settings-group">
-        <div class="settings-group-title">API Connection</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Yoco API Key</div>
-            <div class="settings-desc">Your live secret key — never stored, read fresh on every request</div>
-          </div>
-          <div class="key-field settings-control">
-            <input type="password" id="apiKeyInput" placeholder="yoco_live_…">
-            <button class="btn btn-outline btn-sm" onclick="toggleKeyVisibility()">Show</button>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Connection Status</div>
-            <div class="settings-desc">Test your key and load all data</div>
-          </div>
-          <div class="settings-control" style="display:flex;align-items:center;gap:10px">
-            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)">
-              <div class="status-dot" id="statusDot2"></div>
-              <span id="statusText2">Not connected</span>
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Hourly + Daily charts -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
+            <div class="flex justify-between items-center mb-5">
+              <h2 class="text-base font-black uppercase tracking-tight dark:text-white">Sales Volume by Hour</h2>
+              <div class="flex gap-2">
+                <button onclick="setChartView('hourly','revenue',this)" class="tab-btn active px-3 py-1.5 text-[10px] border rounded-lg border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold" id="btnHourlyRevenue">Revenue</button>
+                <button onclick="setChartView('hourly','volume',this)" class="tab-btn px-3 py-1.5 text-[10px] border rounded-lg border-slate-200 dark:border-darkBorder text-slate-400 font-bold" id="btnHourlyVolume">Volume</button>
+              </div>
             </div>
-            <button class="btn btn-primary btn-sm" id="connectBtn" onclick="connect()">Connect</button>
+            <div class="chart-container" style="height:200px"><canvas id="hourlyChart"></canvas></div>
+          </div>
+          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
+            <div class="flex justify-between items-center mb-5">
+              <h2 class="text-base font-black uppercase tracking-tight dark:text-white">Daily Revenue (Last 14 Days)</h2>
+              <button onclick="setChartView('daily','revenue',this)" class="tab-btn px-3 py-1.5 text-[10px] border rounded-lg border-slate-200 dark:border-darkBorder text-slate-400 font-bold">Trend</button>
+            </div>
+            <div class="chart-container" style="height:180px"><canvas id="dailyChart"></canvas></div>
           </div>
         </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Proxy</div>
-            <div class="settings-desc">CORS proxy used for direct browser calls</div>
+
+        <!-- Right column: method breakdown + segment -->
+        <div class="space-y-6">
+          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
+            <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Payment Breakdown</h2>
+            <table class="w-full text-sm">
+              <thead><tr class="text-slate-400 border-b dark:border-darkBorder">
+                <th class="pb-3 text-left font-black uppercase text-[10px] tracking-widest">Method</th>
+                <th class="pb-3 text-right font-black uppercase text-[10px] tracking-widest">Vol</th>
+                <th class="pb-3 text-right font-black uppercase text-[10px] tracking-widest">Amount</th>
+                <th class="pb-3 text-right font-black uppercase text-[10px] tracking-widest">Share</th>
+              </tr></thead>
+              <tbody id="methodTable" class="divide-y dark:divide-darkBorder"></tbody>
+            </table>
           </div>
-          <div class="settings-control">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">corsproxy.io</span>
+          <!-- Efficiency block -->
+          <div class="p-6 bg-slate-950 text-white shadow-2xl rounded-2xl relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            <p class="text-[10px] font-black uppercase tracking-[.2em] text-indigo-400 mb-2">Avg Transaction Value</p>
+            <p class="text-4xl font-black tracking-tight mb-4" id="effAvg">—</p>
+            <div class="pt-4 border-t border-white/10">
+              <p class="text-[10px] font-black uppercase tracking-[.2em] text-indigo-400 mb-1">Net Revenue</p>
+              <p class="text-3xl font-black tracking-tight text-indigo-300" id="effNet">—</p>
+              <p class="text-[9px] font-bold text-white/30 uppercase tracking-tight mt-1">Gross − Refunds</p>
+            </div>
+          </div>
+          <!-- Retail vs Hospitality -->
+          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
+            <h2 class="text-sm font-black uppercase tracking-tight dark:text-white mb-4">🏪 Retail vs 🍽 Hospitality</h2>
+            <p class="text-[10px] text-slate-400 mb-3">Estimated by ticket size (≤R150 = hospitality)</p>
+            <div id="segmentBars" class="space-y-3"></div>
           </div>
         </div>
       </div>
 
-      <div class="settings-group">
-        <div class="settings-group-title">Business Profile</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Business Name</div>
-            <div class="settings-desc">Shown in report headers</div>
+      <!-- Today + Peak hours -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="lg:col-span-2 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
+          <div class="p-5 border-b dark:border-darkBorder flex justify-between items-center">
+            <div>
+              <h2 class="text-base font-black uppercase tracking-tight">Today's Transactions</h2>
+              <p class="text-xs text-slate-400 mt-0.5" id="todayMeta">—</p>
+            </div>
+            <button onclick="showSection('transactions')" class="text-xs font-bold text-indigo-500 hover:underline">View all →</button>
           </div>
-          <div class="settings-control">
-            <input class="form-input" id="bizName" placeholder="My Business" style="width:200px" oninput="saveBizSettings()">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <tr>
+                  <th class="px-4 py-3 text-left">Time</th>
+                  <th class="px-4 py-3 text-left">Amount</th>
+                  <th class="px-4 py-3 text-left">Method</th>
+                  <th class="px-4 py-3 text-left">Status</th>
+                  <th class="px-4 py-3 text-left">Reference</th>
+                </tr>
+              </thead>
+              <tbody id="todayTableBody" class="divide-y dark:divide-darkBorder"></tbody>
+            </table>
           </div>
         </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Business Type</div>
-            <div class="settings-desc">Tailors segment analysis on the dashboard</div>
+        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
+          <h2 class="text-sm font-black uppercase tracking-tight dark:text-white mb-4">🕐 Peak Hours Heatmap</h2>
+          <div class="grid grid-cols-6 gap-1.5 mb-2" id="peakGrid"></div>
+          <div class="grid grid-cols-6 gap-1.5" id="peakLabels"></div>
+          <div class="mt-4 pt-4 border-t dark:border-darkBorder">
+            <h2 class="text-sm font-black uppercase tracking-tight dark:text-white mb-3">📅 Day of Week</h2>
+            <div class="chart-container" style="height:100px"><canvas id="dowChart"></canvas></div>
           </div>
-          <div class="settings-control">
-            <select class="filter-select" id="bizType" onchange="saveBizSettings()">
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SALES REPORT ═══ -->
+    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-sales">
+      <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
+        <div>
+          <h1 class="text-2xl font-black tracking-tight">Sales Report</h1>
+          <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Revenue analysis &amp; transaction ledger</p>
+        </div>
+        <div class="flex gap-3 flex-wrap">
+          <button onclick="exportExcel('sales')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Excel Export
+          </button>
+        </div>
+      </header>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-indigo-50/50 dark:from-darkCard dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Gross Sales</p>
+          <p class="stat-value text-indigo-600 dark:text-indigo-400" id="sGross">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1" id="sTxCount">0 transactions</p>
+        </div>
+        <div class="kpi-card p-5 bg-white dark:bg-darkCard border border-slate-100 dark:border-darkBorder shadow-sm rounded-2xl">
+          <p class="stat-label">Est. VAT (15%)</p>
+          <p class="stat-value" id="sVAT">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">Tax component</p>
+        </div>
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Refunds</p>
+          <p class="stat-value text-rose-500" id="sRefunds">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1" id="sRefundCount">0 refunds</p>
+        </div>
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-emerald-50/50 dark:from-darkCard dark:to-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Net Sales</p>
+          <p class="stat-value text-emerald-600 dark:text-emerald-400" id="sNet">—</p>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">After refunds</p>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
+          <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Revenue by Day of Week</h2>
+          <div class="chart-container" style="height:180px"><canvas id="salesDowChart"></canvas></div>
+        </div>
+        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
+          <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Transaction Size Bands</h2>
+          <div id="salesSizeBands" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- Payment method table full -->
+      <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl mb-6">
+        <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Payment Breakdown</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-slate-400 border-b dark:border-darkBorder">
+              <th class="pb-4 text-left font-black uppercase text-[10px] tracking-widest">Method</th>
+              <th class="pb-4 text-right font-black uppercase text-[10px] tracking-widest">Volume</th>
+              <th class="pb-4 text-right font-black uppercase text-[10px] tracking-widest">Gross Amount</th>
+              <th class="pb-4 text-right font-black uppercase text-[10px] tracking-widest">Share</th>
+              <th class="pb-4 text-left font-black uppercase text-[10px] tracking-widest pl-6">Distribution</th>
+            </tr></thead>
+            <tbody id="salesMethodTable" class="divide-y dark:divide-darkBorder"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Transaction Ledger with Gross/VAT/Net columns -->
+      <div class="bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
+        <div class="p-5 border-b dark:border-darkBorder flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h2 class="text-base font-black uppercase tracking-tight">Transaction Ledger</h2>
+            <p class="text-xs text-slate-400 mt-0.5" id="ledgerCount">—</p>
+          </div>
+          <div class="flex gap-3 flex-wrap items-center">
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input id="ledgerSearch" type="text" placeholder="Search…" oninput="filterLedger()" class="pl-8 pr-3 py-2 border dark:border-darkBorder rounded-xl text-xs bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-48">
+            </div>
+            <select id="ledgerMethod" onchange="filterLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="">All Methods</option>
+              <option value="card">Card</option>
+              <option value="cash">Cash</option>
+              <option value="instant_eft">Instant EFT</option>
+            </select>
+            <select id="ledgerStatus" onchange="filterLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="">All Statuses</option>
+              <option value="successful">Successful</option>
+              <option value="failed">Failed</option>
+              <option value="pending">Pending</option>
+            </select>
+            <select id="ledgerRows" onchange="ledgerPage=1;renderLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
+              <option value="25" selected>25 rows</option>
+              <option value="50">50 rows</option>
+              <option value="100">100 rows</option>
+              <option value="9999">All</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm whitespace-nowrap">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <tr>
+                <th class="px-4 py-4 text-left">#</th>
+                <th class="px-4 py-4 text-left">Date / Time</th>
+                <th class="px-4 py-4 text-left">Method</th>
+                <th class="px-4 py-4 text-right">Gross</th>
+                <th class="px-4 py-4 text-right">Est. VAT</th>
+                <th class="px-4 py-4 text-right">Net</th>
+                <th class="px-4 py-4 text-left">Status</th>
+                <th class="px-4 py-4 text-left">Reference</th>
+                <th class="px-4 py-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerBody" class="divide-y dark:divide-darkBorder"></tbody>
+          </table>
+        </div>
+        <!-- Page totals footer -->
+        <div id="ledgerTotals" class="p-5 border-t dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30 hidden">
+          <div class="flex flex-wrap gap-6 text-xs font-black uppercase tracking-widest">
+            <span class="text-slate-400">Page Totals:</span>
+            <span>Gross: <span id="pgGross" class="text-slate-800 dark:text-white ml-1">—</span></span>
+            <span>Est. VAT: <span id="pgVAT" class="text-amber-600 dark:text-amber-400 ml-1">—</span></span>
+            <span>Net: <span id="pgNet" class="text-indigo-600 dark:text-indigo-400 ml-1">—</span></span>
+          </div>
+        </div>
+        <div id="ledgerPagination" class="hidden p-4 border-t dark:border-darkBorder flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/10">
+          <button id="ledgerPrev" onclick="changeLedgerPage(-1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-white dark:hover:bg-slate-700 transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <span id="ledgerPageIndicator" class="text-xs font-black text-slate-400 uppercase">Page 1 of 1</span>
+          <button id="ledgerNext" onclick="changeLedgerPage(1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-white dark:hover:bg-slate-700 transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TRANSACTIONS ═══ -->
+    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-transactions">
+      <header class="flex justify-between items-start mb-8 gap-4">
+        <div><h1 class="text-2xl font-black tracking-tight">Transactions</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">All payment transactions</p></div>
+        <button onclick="exportCSV('payments')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Export CSV
+        </button>
+      </header>
+      <div class="flex gap-3 mb-5 flex-wrap">
+        <div class="relative flex-1 min-w-[200px]">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input id="txSearch" type="text" placeholder="Search ID, reference, amount…" oninput="filterTx()" class="w-full pl-9 pr-4 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkCard dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+        <select id="txStatus" onchange="filterTx()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+          <option value="">All Statuses</option><option value="successful">Successful</option><option value="failed">Failed</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option>
+        </select>
+        <select id="txMethod" onchange="filterTx()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+          <option value="">All Methods</option><option value="card">Card</option><option value="cash">Cash</option><option value="instant_eft">Instant EFT</option>
+        </select>
+      </div>
+      <div class="bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
+        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
+          <h2 class="font-black uppercase text-sm tracking-tight">All Transactions</h2>
+          <span class="text-xs text-slate-400 font-medium" id="txCountLabel">—</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm whitespace-nowrap">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <tr>
+                <th class="px-4 py-4 text-left">ID</th>
+                <th class="px-4 py-4 text-left">Date / Time</th>
+                <th class="px-4 py-4 text-right">Amount</th>
+                <th class="px-4 py-4 text-left">Method</th>
+                <th class="px-4 py-4 text-left">Status</th>
+                <th class="px-4 py-4 text-left">Reference</th>
+                <th class="px-4 py-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="txBody" class="divide-y dark:divide-darkBorder"></tbody>
+          </table>
+        </div>
+        <div id="txPagination" class="hidden p-4 border-t dark:border-darkBorder flex justify-between items-center">
+          <button onclick="changeTxPage(-1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <span id="txPageLabel" class="text-xs font-black text-slate-400">Page 1 of 1</span>
+          <button onclick="changeTxPage(1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PAYOUTS ═══ -->
+    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-payouts">
+      <header class="flex justify-between items-start mb-8 gap-4">
+        <div><h1 class="text-2xl font-black tracking-tight">Payouts</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Settlement history from Yoco</p></div>
+        <button onclick="loadPayouts()" class="flex items-center gap-2 px-4 py-2.5 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">↺ Reload</button>
+      </header>
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-violet-50/50 dark:from-darkCard dark:to-violet-900/10 border border-violet-100 dark:border-violet-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Total Paid Out</p><p class="stat-value text-violet-600 dark:text-violet-400" id="poTotal">—</p>
+        </div>
+        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
+          <p class="stat-label">Avg Payout</p><p class="stat-value" id="poAvg">—</p>
+        </div>
+        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
+          <p class="stat-label">Payout Count</p><p class="stat-value" id="poCount">—</p>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
+        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
+          <h2 class="font-black uppercase text-sm tracking-tight">Payout History</h2>
+          <span class="text-xs text-slate-400" id="poCountLabel">—</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <tr>
+                <th class="px-4 py-4 text-left">Payout ID</th>
+                <th class="px-4 py-4 text-left">Date</th>
+                <th class="px-4 py-4 text-right">Gross</th>
+                <th class="px-4 py-4 text-right">Net</th>
+                <th class="px-4 py-4 text-left">Status</th>
+                <th class="px-4 py-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="payoutsBody" class="divide-y dark:divide-darkBorder"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ REFUNDS ═══ -->
+    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-refunds">
+      <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Refunds</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Refund management &amp; history</p></header>
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
+          <p class="stat-label">Total Refunded</p><p class="stat-value text-rose-500" id="rTotal">—</p>
+        </div>
+        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
+          <p class="stat-label">Count</p><p class="stat-value" id="rCount">—</p>
+        </div>
+        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
+          <p class="stat-label">Avg Refund</p><p class="stat-value" id="rAvg">—</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+          <h2 class="font-black uppercase text-sm tracking-tight mb-5">↩ Process a Refund</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Payment ID</label>
+              <input id="refundPaymentId" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none font-mono" placeholder="pay_xxxxxxxx">
+            </div>
+            <div>
+              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Amount (cents — blank = full)</label>
+              <input id="refundAmount" type="number" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="e.g. 5000 = R50.00">
+            </div>
+            <div>
+              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Reason (optional)</label>
+              <input id="refundReason" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Customer request…">
+            </div>
+            <button onclick="createRefund()" class="w-full bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all">Process Refund</button>
+          </div>
+        </div>
+        <div class="lg:col-span-2 p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+          <h2 class="font-black uppercase text-sm tracking-tight mb-5">Breakdown by Method</h2>
+          <div id="refundMethodBreak" class="space-y-4"></div>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
+          <h2 class="font-black uppercase text-sm tracking-tight">Refund History</h2>
+          <span class="text-xs text-slate-400" id="rCountLabel">—</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <tr>
+                <th class="px-4 py-4 text-left">Refund ID</th>
+                <th class="px-4 py-4 text-left">Date</th>
+                <th class="px-4 py-4 text-right">Amount</th>
+                <th class="px-4 py-4 text-left">Method</th>
+                <th class="px-4 py-4 text-left">Status</th>
+                <th class="px-4 py-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="refundsBody" class="divide-y dark:divide-darkBorder"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ORDERS ═══ -->
+    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-orders">
+      <header class="flex justify-between items-start mb-8 gap-4">
+        <div><h1 class="text-2xl font-black tracking-tight">Orders</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Order management</p></div>
+        <div class="flex gap-3">
+          <select id="orderStatus" onchange="filterOrders()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+            <option value="">All Statuses</option><option value="open">Open</option><option value="complete">Complete</option><option value="cancelled">Cancelled</option>
+          </select>
+          <button onclick="loadOrders()" class="px-4 py-2.5 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">↺ Reload</button>
+        </div>
+      </header>
+      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
+          <h2 class="font-black uppercase text-sm tracking-tight">Orders</h2>
+          <span id="ordersCountLabel" class="text-xs text-slate-400">—</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <tr>
+                <th class="px-4 py-4 text-left">Order ID</th>
+                <th class="px-4 py-4 text-left">Reference</th>
+                <th class="px-4 py-4 text-right">Amount</th>
+                <th class="px-4 py-4 text-left">Status</th>
+                <th class="px-4 py-4 text-left">Date</th>
+                <th class="px-4 py-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody" class="divide-y dark:divide-darkBorder"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ RAW QUERY ═══ -->
+    <div class="section p-6 md:p-8 max-w-[900px]" id="section-raw">
+      <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Raw API Query</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Direct Yoco API access via corsproxy.io</p></header>
+      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl p-6 space-y-4">
+        <div class="flex gap-3 flex-wrap">
+          <select id="rawMethod" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+            <option>GET</option><option>POST</option>
+          </select>
+          <input id="rawEndpoint" value="/v1/payments" class="flex-1 min-w-[200px] px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+          <button onclick="rawQuery()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all">Execute →</button>
+        </div>
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Request Body (POST only)</label>
+          <textarea id="rawBody" rows="3" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-xs bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono resize-y" placeholder='{"key":"value"}'></textarea>
+        </div>
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Response</label>
+          <pre id="rawResponse" class="w-full p-4 border dark:border-darkBorder rounded-xl text-xs bg-slate-950 text-green-400 font-mono overflow-auto max-h-[500px] leading-relaxed">— execute a query to see the response —</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SETTINGS ═══ -->
+    <div class="section p-6 md:p-8 max-w-[640px]" id="section-settings">
+      <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Settings</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">API connection &amp; business profile</p></header>
+
+      <!-- API Connection -->
+      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden mb-5">
+        <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30">
+          <h2 class="font-black uppercase text-xs tracking-widest text-slate-500">API Connection</h2>
+        </div>
+        <div class="px-6 py-2">
+          <div class="settings-row">
+            <div>
+              <p class="font-bold text-sm">Yoco API Key</p>
+              <p class="text-xs text-slate-400 mt-0.5">Never stored — read fresh on every request</p>
+            </div>
+            <div class="flex gap-2 items-center ml-4">
+              <input type="password" id="apiKeyInput" placeholder="yoco_live_…" class="px-3 py-2 border dark:border-darkBorder rounded-xl text-xs font-mono bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-52">
+              <button onclick="toggleKeyVisibility()" class="px-3 py-2 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">Show</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <p class="font-bold text-sm">Connect</p>
+              <p class="text-xs text-slate-400 mt-0.5">Test key and load all data</p>
+            </div>
+            <div class="flex items-center gap-3 ml-4">
+              <div class="flex items-center gap-2">
+                <div class="status-dot" id="statusDot2"></div>
+                <span class="text-xs font-bold text-slate-500" id="statusText2">Not connected</span>
+              </div>
+              <button id="connectBtn" onclick="connect()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">Connect</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div><p class="font-bold text-sm">CORS Proxy</p><p class="text-xs text-slate-400 mt-0.5">Enables browser-direct API calls</p></div>
+            <span class="text-xs font-mono text-slate-400 ml-4">corsproxy.io</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Business Profile -->
+      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden mb-5">
+        <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30">
+          <h2 class="font-black uppercase text-xs tracking-widest text-slate-500">Business Profile</h2>
+        </div>
+        <div class="px-6 py-2">
+          <div class="settings-row">
+            <div><p class="font-bold text-sm">Business Name</p><p class="text-xs text-slate-400 mt-0.5">Shown in report headers</p></div>
+            <input id="bizName" oninput="saveBiz()" placeholder="My Business" class="ml-4 px-3 py-2 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-44">
+          </div>
+          <div class="settings-row">
+            <div><p class="font-bold text-sm">Business Type</p><p class="text-xs text-slate-400 mt-0.5">Tailors segment analysis</p></div>
+            <select id="bizType" onchange="saveBiz()" class="ml-4 bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
               <option value="both">Retail &amp; Hospitality</option>
               <option value="retail">Retail only</option>
               <option value="hospitality">Hospitality only</option>
@@ -735,728 +738,230 @@ td{padding:12px 16px;font-size:12px;vertical-align:middle}
         </div>
       </div>
 
-      <div class="settings-group">
-        <div class="settings-group-title">Firebase</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Analytics &amp; Firestore</div>
-            <div class="settings-desc">Session tracking and snapshot history</div>
-          </div>
-          <div class="settings-control" style="display:flex;align-items:center;gap:7px">
-            <div class="fb-dot" id="fbDot2"></div>
-            <span id="fbText2" style="font-size:11px;color:var(--muted)">Loading…</span>
-          </div>
+      <!-- Firebase -->
+      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30">
+          <h2 class="font-black uppercase text-xs tracking-widest text-slate-500">Firebase</h2>
         </div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-label">Project</div>
-            <div class="settings-desc">Connected Firebase project</div>
+        <div class="px-6 py-2">
+          <div class="settings-row">
+            <div><p class="font-bold text-sm">Analytics &amp; Firestore</p><p class="text-xs text-slate-400 mt-0.5">Session tracking &amp; snapshot history</p></div>
+            <div class="flex items-center gap-2 ml-4">
+              <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" id="fbDot2"></div>
+              <span class="text-xs text-slate-400" id="fbText2">Loading…</span>
+            </div>
           </div>
-          <div class="settings-control">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">yoco-pos-dashbord</span>
+          <div class="settings-row">
+            <div><p class="font-bold text-sm">Project</p><p class="text-xs text-slate-400 mt-0.5">Connected Firebase project</p></div>
+            <span class="text-xs font-mono text-slate-400 ml-4">yoco-pos-dashbord</span>
           </div>
         </div>
       </div>
-
     </div>
-  </div>
 
-</main>
+  </main>
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  CORE
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 const BASE_URL = 'https://corsproxy.io/?url=https://api.yoco.com';
 let connected = false;
-let allData = { payments: [], orders: [], refunds: [], payouts: [] };
-let chartMode = 'revenue';
-let pages = { tx: 1, sales: 1 };
-const PAGE_SIZE = 20;
+let allData = { payments:[], orders:[], refunds:[], payouts:[] };
+let ledgerFiltered = [], txFiltered = [];
+let ledgerPage = 1, txPage = 1;
+let charts = {};
 
-// Biz settings (localStorage — not the API key, just display prefs)
-let bizSettings = JSON.parse(localStorage.getItem('yoco_biz') || '{"name":"My Business","type":"both"}');
+let biz = JSON.parse(localStorage.getItem('yoco_biz')||'{"name":"","type":"both"}');
 
-function getKey() { return document.getElementById('apiKeyInput').value.trim(); }
-function fmt(c) { return 'R\u00a0' + (c/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
-function fmtK(c) { return c >= 100000 ? 'R '+Math.round(c/100000)+'k' : fmt(c); }
-function fmtDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
+function getKey(){ return document.getElementById('apiKeyInput').value.trim(); }
+function fmt(c){ return 'R\u00a0'+(c/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function fmtDate(iso){
+  if(!iso) return '—';
+  const d=new Date(iso);
   return d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
 }
-function fmtTime(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
-}
-function pct(a,b) { return b ? Math.round(a/b*100)+'%' : '0%'; }
-function getAmt(p) { return p.amount?.value ?? p.amount ?? 0; }
-function getMethod(p) { return p.paymentMethodDetails?.type || p.method || 'card'; }
-function getStatus(p) { return (p.status||'').toLowerCase(); }
+function fmtTime(iso){ if(!iso)return'—'; return new Date(iso).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}); }
+function getAmt(p){ return p.amount?.value??p.amount??0; }
+function getMethod(p){ return p.paymentMethodDetails?.type||p.method||'card'; }
+function getStatus(p){ return(p.status||'').toLowerCase(); }
+function isSuccess(p){ return['successful','succeeded'].includes(getStatus(p)); }
+function pct(a,b){ return b?((a/b)*100).toFixed(1)+'%':'0%'; }
 
-function statusBadge(s) {
-  const m = {successful:'badge-success',succeeded:'badge-success',failed:'badge-danger',cancelled:'badge-danger',pending:'badge-warning',processing:'badge-warning',open:'badge-info',complete:'badge-success',completed:'badge-success',paid:'badge-success',refunded:'badge-orange'};
-  return `<span class="badge ${m[s?.toLowerCase()]||'badge-muted'}">${s||'—'}</span>`;
+// Badge helpers matching reference style
+function statusBadge(s){
+  const map={successful:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',succeeded:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',failed:'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400',cancelled:'bg-slate-100 dark:bg-slate-700 text-slate-500',pending:'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',processing:'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',open:'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',complete:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'};
+  return`<span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${map[s?.toLowerCase()]||'bg-slate-100 dark:bg-slate-700 text-slate-500'}">${s||'—'}</span>`;
 }
-function methodBadge(m) {
-  const c = {card:'badge-info',cash:'badge-success',instant_eft:'badge-purple',gift_voucher:'badge-orange'};
-  return `<span class="badge ${c[m?.toLowerCase()]||'badge-muted'}">${m||'—'}</span>`;
+function methodBadge(m){
+  const map={card:'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400',cash:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',instant_eft:'bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400',gift_voucher:'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'};
+  return`<span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${map[m?.toLowerCase()]||'bg-slate-100 dark:bg-slate-700 text-slate-500'}">${m||'—'}</span>`;
 }
 
 // ─ TOAST ─
-function toast(title, detail, type='info', dur=6000) {
-  if (['info','success','error','warning'].includes(detail)) { type=detail; detail=''; }
-  const icon = type==='success'?'✓':type==='error'?'✗':'ℹ';
-  const t = document.createElement('div');
-  t.className = 'toast '+type;
-  const h = document.createElement('div');
-  h.style.fontWeight='700';
-  h.textContent = icon+'  '+title;
-  t.appendChild(h);
-  if (detail) {
-    const d = document.createElement('div');
-    d.style.cssText='font-size:11px;font-weight:400;margin-top:3px;opacity:0.8';
-    d.textContent = detail;
-    t.appendChild(d);
-  }
+function toast(title,detail,type='info',dur=6000){
+  if(['info','success','error'].includes(detail)){type=detail;detail='';}
+  const colors={success:'border-l-4 border-emerald-500',error:'border-l-4 border-rose-500',info:'border-l-4 border-indigo-500'};
+  const icons={success:'✓',error:'✗',info:'ℹ'};
+  const t=document.createElement('div');
+  t.className=`toast bg-white dark:bg-darkCard shadow-lg rounded-xl p-4 ${colors[type]||''} min-w-[240px] max-w-[320px]`;
+  t.innerHTML=`<div class="flex items-center gap-2 font-bold text-sm">${icons[type]||''} ${title}</div>${detail?`<div class="text-xs text-slate-400 mt-1">${detail}</div>`:''}`;
   document.getElementById('toastContainer').appendChild(t);
-  setTimeout(()=>t.remove(), dur);
+  setTimeout(()=>t.remove(),dur);
+}
+
+// ─ THEME ─
+function toggleTheme(){
+  const html=document.documentElement;
+  if(html.classList.contains('dark')){html.classList.replace('dark','light');localStorage.theme='light';}
+  else{html.classList.replace('light','dark');localStorage.theme='dark';}
+  setTimeout(()=>{ Object.values(charts).forEach(c=>{if(c)c.destroy();}); charts={}; renderOverview(); renderSales(); },100);
 }
 
 // ─ NAV ─
-const sections = {
-  overview:'Dashboard', sales:'Sales', transactions:'Transactions',
-  payouts:'Payouts', refunds:'Refunds', orders:'Orders',
-  links:'Payment Links', raw:'Raw Query', settings:'Settings'
-};
-const subs = {
-  overview:'Retail & Hospitality Overview', sales:'Revenue & Sales Analysis',
-  transactions:'All Payment Transactions', payouts:'Payout History',
-  refunds:'Refund Management', orders:'Order Management',
-  links:'Payment Links', raw:'Direct API Access', settings:'Configuration'
-};
-function showSection(id) {
+const pageTitles={overview:'Dashboard',sales:'Sales Report',transactions:'Transactions',payouts:'Payouts',refunds:'Refunds',orders:'Orders',raw:'Raw Query',settings:'Settings'};
+function showSection(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
   document.getElementById('section-'+id).classList.add('active');
   document.querySelector(`[data-section="${id}"]`)?.classList.add('active');
-  document.getElementById('pageTitle').textContent = sections[id]||id;
-  document.getElementById('pageSub').textContent = subs[id]||'';
-  if (connected) {
-    if (id==='transactions' && !allData.payments.length) loadPayments();
-    if (id==='orders' && !allData.orders.length) loadOrders();
-    if (id==='refunds' && !allData.refunds.length) loadRefunds();
-    if (id==='payouts' && !allData.payouts.length) loadPayouts();
+  if(connected){
+    if(id==='transactions'&&!allData.payments.length)loadPayments();
+    if(id==='orders'&&!allData.orders.length)loadOrders();
+    if(id==='refunds'&&!allData.refunds.length)loadRefunds();
+    if(id==='payouts'&&!allData.payouts.length)loadPayouts();
   }
 }
 
-// ─ KEY TOGGLE ─
-function toggleKeyVisibility() {
-  const i = document.getElementById('apiKeyInput');
-  i.type = i.type==='password'?'text':'password';
-  event.target.textContent = i.type==='password'?'Show':'Hide';
+// ─ KEY ─
+function toggleKeyVisibility(){
+  const i=document.getElementById('apiKeyInput');
+  i.type=i.type==='password'?'text':'password';
+  event.target.textContent=i.type==='password'?'Show':'Hide';
 }
 
-// ─ BIZ SETTINGS ─
-function saveBizSettings() {
-  bizSettings.name = document.getElementById('bizName')?.value || '';
-  bizSettings.type = document.getElementById('bizType')?.value || 'both';
-  localStorage.setItem('yoco_biz', JSON.stringify(bizSettings));
+// ─ BIZ ─
+function saveBiz(){
+  biz.name=document.getElementById('bizName')?.value||'';
+  biz.type=document.getElementById('bizType')?.value||'both';
+  localStorage.setItem('yoco_biz',JSON.stringify(biz));
 }
-function loadBizSettings() {
-  if (document.getElementById('bizName')) document.getElementById('bizName').value = bizSettings.name||'';
-  if (document.getElementById('bizType')) document.getElementById('bizType').value = bizSettings.type||'both';
+function loadBiz(){
+  if(document.getElementById('bizName'))document.getElementById('bizName').value=biz.name||'';
+  if(document.getElementById('bizType'))document.getElementById('bizType').value=biz.type||'both';
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  API
-// ═══════════════════════════════════════════════════
-function parseApiError(status, body, fetchError) {
-  if (fetchError) {
-    return { title:'Network Error', detail:'Could not reach the Yoco API via proxy. Check your internet connection. ('+( fetchError.message||'')+')', hint:'' };
-  }
-  const messages = {
-    400:"Bad Request — malformed request or missing required fields.",
-    401:"Unauthorised — your API key is invalid or incorrect. Double-check it in the Yoco Developer Portal.",
-    403:"Forbidden — this key does not have permission for this endpoint.",
-    404:"Not Found — the resource does not exist.",
-    422:"Unprocessable — request body contained invalid values.",
-    429:"Rate Limited — too many requests. Wait a moment and try again.",
-    500:"Yoco Server Error — issue on Yoco's side. Try again shortly.",
-    502:"Bad Gateway — Yoco API returned an unexpected response.",
-    503:"Service Unavailable — Yoco API is temporarily down."
-  };
-  const bodyMsg = body?.message||body?.error?.message||body?.error||body?.detail||'';
-  return {
-    title: 'Error '+status,
-    detail: (messages[status]||('HTTP '+status)) + (bodyMsg?' — '+bodyMsg:''),
-    hint: status===401?'Live keys start with yoco_live_':''
-  };
+// ═══════════════════════════════════════
+function parseErr(status,body,fe){
+  if(fe)return{title:'Network Error',detail:'Could not reach Yoco via proxy. ('+(fe.message||'')+')',hint:''};
+  const msgs={401:'Unauthorised — check your API key.',403:'Forbidden — key lacks permission.',404:'Not found.',429:'Rate limited — wait and retry.',500:'Yoco server error.'};
+  const bm=body?.message||body?.error||'';
+  return{title:'Error '+status,detail:(msgs[status]||'HTTP '+status)+(bm?' — '+bm:''),hint:status===401?'Live keys start with yoco_live_':''};
 }
 
-async function yocoFetch(path, method='GET', body=null) {
-  const key = getKey();
-  if (!key) throw Object.assign(new Error('No key'), {uiError:{title:'No API Key',detail:'Enter your Yoco API key in Settings.',hint:''}});
-  const headers = {'Authorization':'Bearer '+key};
-  if (body) headers['Content-Type'] = 'application/json';
-  let res, rb;
-  try {
-    res = await fetch(BASE_URL+path, {method, headers, body:body?JSON.stringify(body):undefined});
-  } catch(fe) {
-    throw Object.assign(fe, {uiError:parseApiError(null,null,fe)});
-  }
-  try { rb = await res.json(); } catch(_) { rb={}; }
-  if (!res.ok) {
-    const e = new Error('API error'); e.uiError=parseApiError(res.status,rb,null); e.status=res.status; e.body=rb; throw e;
-  }
+async function yocoFetch(path,method='GET',body=null){
+  const key=getKey();
+  if(!key)throw Object.assign(new Error('No key'),{uiError:{title:'No API Key',detail:'Enter your key in Settings.',hint:''}});
+  const headers={'Authorization':'Bearer '+key};
+  if(body)headers['Content-Type']='application/json';
+  let res,rb;
+  try{ res=await fetch(BASE_URL+path,{method,headers,body:body?JSON.stringify(body):undefined}); }
+  catch(fe){ throw Object.assign(fe,{uiError:parseErr(null,null,fe)}); }
+  try{rb=await res.json();}catch(_){rb={};}
+  if(!res.ok){const e=new Error('err');e.uiError=parseErr(res.status,rb,null);e.status=res.status;throw e;}
   return rb;
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  CONNECT
-// ═══════════════════════════════════════════════════
-function setStatus(s) {
-  const states = {connecting:['connecting','Connecting…'],live:['live','Connected'],error:['error','Error'],disconnected:['','Not connected']};
-  const [cls,label] = states[s]||['',''];
-  ['statusDot','statusDot2'].forEach(id=>{ const el=document.getElementById(id); if(el){el.className='status-dot'+(cls?' '+cls:'');} });
-  ['statusText','statusText2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=label; });
-  if (s==='live') { const p=document.getElementById('connectErrorPanel'); if(p)p.remove(); }
+// ═══════════════════════════════════════
+function setStatus(s){
+  const states={connecting:'connecting',live:'live',error:'error'};
+  const labels={connecting:'Connecting…',live:'Connected',error:'Error',disconnected:'Not connected'};
+  ['statusDot','statusDot2'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.className='status-dot'+(states[s]?' '+states[s]:'');
+  });
+  ['statusText','statusText2'].forEach(id=>{
+    const el=document.getElementById(id); if(el)el.textContent=labels[s]||s;
+  });
 }
 
-function showConnectError(err) {
-  let p = document.getElementById('connectErrorPanel');
-  if (!p) {
-    p = document.createElement('div'); p.id='connectErrorPanel';
-    document.querySelector('.section.active')?.prepend(p);
-  }
-  p.innerHTML='';
-  const t=document.createElement('div'); t.style.cssText='color:var(--danger);font-weight:700;font-size:13px;margin-bottom:6px'; t.textContent='✗ '+err.title; p.appendChild(t);
-  if(err.detail){const d=document.createElement('div');d.style.cssText='color:var(--text);margin-bottom:4px';d.textContent=err.detail;p.appendChild(d);}
-  if(err.hint){const h=document.createElement('div');h.style.cssText='color:var(--warning);font-style:italic';h.textContent='💡 '+err.hint;p.appendChild(h);}
-}
-
-async function connect() {
-  const key = getKey();
-  if (!key) { toast('No API key', 'Enter your key in Settings first', 'error'); showSection('settings'); return; }
-  const btn = document.getElementById('connectBtn');
-  if (btn) { btn.textContent='…'; btn.disabled=true; }
+async function connect(){
+  if(!getKey()){toast('No API key','Enter your key in Settings first','error');showSection('settings');return;}
+  const btn=document.getElementById('connectBtn');
+  if(btn){btn.textContent='…';btn.disabled=true;}
   setStatus('connecting');
-  try {
+  try{
     await yocoFetch('/v1/payments?count=1');
-    connected = true;
-    setStatus('live');
-    if (btn) { btn.textContent='✓ Connected'; btn.disabled=false; }
-    document.getElementById('lastRefreshed').textContent = 'Updated '+new Date().toLocaleTimeString('en-ZA');
-    await Promise.all([loadPayments(true), loadOrders(true), loadRefunds(true), loadPayouts(true)]);
-    renderOverview();
-    toast('Connected', 'Live data loaded from Yoco', 'success');
-    if (window._fb) {
-      window._fb.track('yoco_connect_success',{key_prefix:key.substring(0,12)});
-      window._fb.saveSession('success',key.substring(0,12));
-      window._fb.saveSnapshot({payments:allData.payments.length,orders:allData.orders.length,refunds:allData.refunds.length,payouts:allData.payouts.length,totalPaymentValue:allData.payments.reduce((s,p)=>s+getAmt(p),0)});
+    connected=true; setStatus('live');
+    if(btn){btn.textContent='✓ Connected';btn.disabled=false;}
+    document.getElementById('lastRefreshed').textContent='Updated '+new Date().toLocaleTimeString('en-ZA');
+    await Promise.all([loadPayments(true),loadOrders(true),loadRefunds(true),loadPayouts(true)]);
+    renderOverview(); renderSales();
+    toast('Connected','Live data loaded from Yoco','success');
+    if(window._fb){
+      window._fb.track('yoco_connect_success',{key_prefix:getKey().substring(0,12)});
+      window._fb.saveSession('success',getKey().substring(0,12));
+      window._fb.saveSnapshot({payments:allData.payments.length,orders:allData.orders.length,refunds:allData.refunds.length,payouts:allData.payouts.length});
     }
-  } catch(e) {
+  }catch(e){
     connected=false; setStatus('error');
-    if (btn) { btn.textContent='Connect'; btn.disabled=false; }
+    if(btn){btn.textContent='Connect';btn.disabled=false;}
     const err=e.uiError||{title:'Connection Failed',detail:e.message,hint:''};
     toast(err.title,[err.detail,err.hint].filter(Boolean).join(' — '),'error',10000);
-    showConnectError(err);
-    if(window._fb){window._fb.track('yoco_connect_error',{error:err.title});window._fb.saveSession('error',getKey().substring(0,12));}
+    if(window._fb)window._fb.saveSession('error',getKey().substring(0,12));
   }
 }
 
-async function refreshAll() {
-  if (!connected) { toast('Not connected','Go to Settings to connect your API key','error'); return; }
+async function refreshAll(){
+  if(!connected){toast('Not connected','Go to Settings','error');return;}
   await Promise.all([loadPayments(true),loadOrders(true),loadRefunds(true),loadPayouts(true)]);
-  renderOverview();
-  renderSalesSection();
+  renderOverview(); renderSales();
   document.getElementById('lastRefreshed').textContent='Updated '+new Date().toLocaleTimeString('en-ZA');
-  toast('Refreshed','Data reloaded','success',3000);
+  toast('Refreshed','','success',3000);
 }
 
-// ═══════════════════════════════════════════════════
-//  DATA LOADERS
-// ═══════════════════════════════════════════════════
-async function loadPayments(silent=false) {
-  try {
-    const d = await yocoFetch('/v1/payments?count=200');
-    allData.payments = d.payments||d.data||(Array.isArray(d)?d:[]);
-    renderTxTable(); renderSalesTable();
-  } catch(e) {
-    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
-    throw e;
-  }
+// ═══════════════════════════════════════
+//  LOADERS
+// ═══════════════════════════════════════
+async function loadPayments(silent=false){
+  try{
+    const d=await yocoFetch('/v1/payments?count=200');
+    allData.payments=d.payments||d.data||(Array.isArray(d)?d:[]);
+    renderTxTable(); renderLedger();
+  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
-async function loadOrders(silent=false) {
-  try {
-    const d = await yocoFetch('/v1/orders?count=200');
-    allData.orders = d.orders||d.data||(Array.isArray(d)?d:[]);
+async function loadOrders(silent=false){
+  try{
+    const d=await yocoFetch('/v1/orders?count=200');
+    allData.orders=d.orders||d.data||(Array.isArray(d)?d:[]);
     renderOrdersTable();
-  } catch(e) {
-    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
-    throw e;
-  }
+  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
-async function loadRefunds(silent=false) {
-  try {
-    const d = await yocoFetch('/v1/refunds?count=200');
-    allData.refunds = d.refunds||d.data||(Array.isArray(d)?d:[]);
-    renderRefundsTable(); renderRefundKpis();
-  } catch(e) {
-    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
-    throw e;
-  }
+async function loadRefunds(silent=false){
+  try{
+    const d=await yocoFetch('/v1/refunds?count=200');
+    allData.refunds=d.refunds||d.data||(Array.isArray(d)?d:[]);
+    renderRefundsSection();
+  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
-async function loadPayouts(silent=false) {
-  try {
-    const d = await yocoFetch('/v1/payouts?count=200');
-    allData.payouts = d.payouts||d.data||(Array.isArray(d)?d:[]);
-    renderPayoutsTable(); renderPayoutKpis();
-  } catch(e) {
-    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
-    throw e;
-  }
+async function loadPayouts(silent=false){
+  try{
+    const d=await yocoFetch('/v1/payouts?count=200');
+    allData.payouts=d.payouts||d.data||(Array.isArray(d)?d:[]);
+    renderPayoutsSection();
+  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
 
-// ═══════════════════════════════════════════════════
-//  OVERVIEW RENDERING
-// ═══════════════════════════════════════════════════
-function renderOverview() {
-  const pays = allData.payments;
-  const successful = pays.filter(p=>['successful','succeeded'].includes(getStatus(p)));
-  const totalRev = successful.reduce((s,p)=>s+getAmt(p),0);
-  const avgTx = successful.length ? Math.round(totalRev/successful.length) : 0;
-  const successRate = pays.length ? Math.round(successful.length/pays.length*100) : 0;
-  const totalRefunded = allData.refunds.reduce((s,r)=>s+getAmt(r),0);
-  const refundRate = totalRev ? (totalRefunded/totalRev*100).toFixed(1)+'%' : '0%';
-  const totalPayout = allData.payouts.reduce((s,p)=>s+getAmt(p),0);
-
-  document.getElementById('kpiRevenue').textContent = fmt(totalRev);
-  document.getElementById('kpiPaymentCount').textContent = successful.length;
-  document.getElementById('kpiAvgTx').textContent = fmt(avgTx);
-  document.getElementById('kpiSuccessRate').textContent = successRate+'%';
-  document.getElementById('kpiPayouts').textContent = fmt(totalPayout);
-  document.getElementById('kpiPayoutCount').textContent = allData.payouts.length+' payouts';
-  document.getElementById('kpiRefundRate').textContent = refundRate;
-  document.getElementById('kpiRefundAmount').textContent = fmt(totalRefunded)+' refunded';
-
-  renderDailyChart();
-  renderMethodBreakdown();
-  renderPeakHours();
-  renderSegmentBreakdown();
-  renderRecentTx();
-  renderTodayTable();
-  renderSalesSection();
-}
-
-function setChartMode(mode, btn) {
-  chartMode = mode;
-  document.querySelectorAll('.panel-title .tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  renderDailyChart();
-}
-
-function renderDailyChart() {
-  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
-  // Group by date, last 14 days
-  const byDate = {};
-  pays.forEach(p=>{
-    const dt = (p.created_at||p.createdAt||'').substring(0,10);
-    if (!dt) return;
-    if (!byDate[dt]) byDate[dt] = {rev:0,vol:0};
-    byDate[dt].rev += getAmt(p);
-    byDate[dt].vol++;
-  });
-  const dates = Object.keys(byDate).sort().slice(-14);
-  const vals = dates.map(d=>chartMode==='revenue'?byDate[d].rev:byDate[d].vol);
-  const maxV = Math.max(...vals,1);
-  const chart = document.getElementById('dailyChart');
-  const labels = document.getElementById('dailyLabels');
-  chart.innerHTML = dates.map((d,i)=>{
-    const h = Math.max(3,Math.round(vals[i]/maxV*76));
-    const tip = d+': '+(chartMode==='revenue'?fmt(vals[i]):vals[i]+' txn');
-    return `<div class="bc-bar-wrap"><div class="bc-bar" style="height:${h}px" title="${tip}" data-tip="${tip}"></div></div>`;
-  }).join('');
-  labels.innerHTML = dates.map(d=>`<div class="bc-label">${new Date(d+'T12:00:00').toLocaleDateString('en-ZA',{day:'2-digit',month:'short'})}</div>`).join('');
-}
-
-function renderMethodBreakdown() {
-  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
-  const byMethod = {};
-  pays.forEach(p=>{
-    const m = getMethod(p); byMethod[m]=(byMethod[m]||0)+getAmt(p);
-  });
-  const total = Object.values(byMethod).reduce((a,b)=>a+b,0)||1;
-  const colors = {card:'var(--blue)',cash:'var(--accent)',instant_eft:'var(--purple)',gift_voucher:'var(--orange)'};
-  const entries = Object.entries(byMethod).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('methodBreakdown').innerHTML = `<div class="metric-bar-row">${entries.map(([m,v])=>`
-    <div class="mb-item">
-      <div class="mb-header"><span class="mb-name">${m}</span><span class="mb-val">${fmt(v)}</span></div>
-      <div class="mb-track"><div class="mb-fill" style="width:${Math.round(v/total*100)}%;background:${colors[m]||'var(--muted)'}"></div></div>
-    </div>`).join('')||'<div style="color:var(--muted);font-size:12px">No data</div>'}
-  </div>`;
-}
-
-function renderPeakHours() {
-  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
-  const byHour = new Array(24).fill(0);
-  pays.forEach(p=>{
-    const dt = p.created_at||p.createdAt;
-    if (dt) byHour[new Date(dt).getHours()]++;
-  });
-  // Show 12 slots: group by 2-hour blocks
-  const blocks = Array.from({length:12},(_,i)=>byHour[i*2]+(byHour[i*2+1]||0));
-  const maxB = Math.max(...blocks,1);
-  const heat = document.getElementById('peakHours');
-  const hlabels = document.getElementById('peakHourLabels');
-  heat.innerHTML = blocks.map((v,i)=>{
-    const int = Math.round(v/maxB*100);
-    const bg = `rgba(0,200,150,${0.1+int/100*0.9})`;
-    const h = i*2;
-    const tip = `${h.toString().padStart(2,'0')}:00–${(h+2).toString().padStart(2,'0')}:00 (${v} txn)`;
-    return `<div class="hm-cell" style="background:${bg}" data-tip="${tip}" title="${tip}"></div>`;
-  }).join('');
-  hlabels.innerHTML = Array.from({length:12},(_,i)=>`<div class="hm-label">${(i*2).toString().padStart(2,'0')}h</div>`).join('');
-}
-
-function renderSegmentBreakdown() {
-  // Infer segment from amount: hospitality = typically smaller avg tickets (coffee, drinks)
-  // Retail = larger, less frequent. This is heuristic-based since Yoco doesn't tag by type.
-  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
-  const hosp = pays.filter(p=>getAmt(p)<=15000); // under R150
-  const retail = pays.filter(p=>getAmt(p)>15000);
-  const hospRev = hosp.reduce((s,p)=>s+getAmt(p),0);
-  const retailRev = retail.reduce((s,p)=>s+getAmt(p),0);
-  const total = hospRev+retailRev||1;
-
-  document.getElementById('segmentBreakdown').innerHTML = `
-    <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Estimated from transaction size — under R150 = hospitality, over = retail</div>
-    <div class="metric-bar-row">
-      <div class="mb-item">
-        <div class="mb-header"><span class="mb-name">🍽 Hospitality (≤R150)</span><span class="mb-val">${fmt(hospRev)}</span></div>
-        <div class="mb-track"><div class="mb-fill" style="width:${Math.round(hospRev/total*100)}%;background:var(--orange)"></div></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">${hosp.length} transactions · avg ${hosp.length?fmt(Math.round(hospRev/hosp.length)):'—'}</div>
-      </div>
-      <div class="mb-item">
-        <div class="mb-header"><span class="mb-name">🛍 Retail (>R150)</span><span class="mb-val">${fmt(retailRev)}</span></div>
-        <div class="mb-track"><div class="mb-fill" style="width:${Math.round(retailRev/total*100)}%;background:var(--blue)"></div></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">${retail.length} transactions · avg ${retail.length?fmt(Math.round(retailRev/retail.length)):'—'}</div>
-      </div>
-    </div>`;
-}
-
-function renderRecentTx() {
-  const rows = [...allData.payments].slice(0,8);
-  document.getElementById('recentTx').innerHTML = rows.length ? rows.map(p=>`
-    <div class="detail-row" style="cursor:pointer" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Transaction")'>
-      <div>
-        <div style="font-size:12px;font-weight:600">${fmt(getAmt(p))}</div>
-        <div style="font-size:10px;color:var(--muted)">${fmtTime(p.created_at||p.createdAt)}</div>
-      </div>
-      <div style="text-align:right">${statusBadge(p.status)}</div>
-    </div>`).join('') : '<div style="color:var(--muted);font-size:12px">No recent transactions</div>';
-}
-
-function renderTodayTable() {
-  const today = new Date().toISOString().substring(0,10);
-  const rows = allData.payments.filter(p=>(p.created_at||p.createdAt||'').startsWith(today));
-  document.getElementById('todayCount').textContent = rows.length+' transactions today · '+fmt(rows.filter(p=>['successful','succeeded'].includes(getStatus(p))).reduce((s,p)=>s+getAmt(p),0));
-  document.getElementById('todayTable').innerHTML = rows.length ? `<table>
-    <thead><tr><th>Time</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th></tr></thead>
-    <tbody>${rows.map(p=>`<tr>
-      <td style="color:var(--muted)">${fmtTime(p.created_at||p.createdAt)}</td>
-      <td style="font-weight:700;color:var(--accent)">${fmt(getAmt(p))}</td>
-      <td>${methodBadge(getMethod(p))}</td>
-      <td>${statusBadge(p.status)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${p.externalReference||p.metadata?.reference||'—'}</td>
-    </tr>`).join('')}</tbody></table>` :
-    '<div class="empty"><div class="empty-icon">◈</div><div class="empty-text">No transactions today yet</div></div>';
-}
-
-// ═══════════════════════════════════════════════════
-//  SALES SECTION
-// ═══════════════════════════════════════════════════
-function renderSalesSection() {
-  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
-  const gross = pays.reduce((s,p)=>s+getAmt(p),0);
-  const refunded = allData.refunds.reduce((s,r)=>s+getAmt(r),0);
-  const cardRev = pays.filter(p=>getMethod(p)==='card').reduce((s,p)=>s+getAmt(p),0);
-  const otherRev = gross-cardRev;
-  document.getElementById('salesGross').textContent = fmt(gross);
-  document.getElementById('salesNet').textContent = fmt(gross-refunded);
-  document.getElementById('salesCard').textContent = fmt(cardRev);
-  document.getElementById('salesOther').textContent = fmt(otherRev);
-
-  // Day of week chart
-  const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const byDow = new Array(7).fill(0);
-  pays.forEach(p=>{ const d=new Date(p.created_at||p.createdAt||0); byDow[d.getDay()]+=getAmt(p); });
-  const maxDow = Math.max(...byDow,1);
-  document.getElementById('dowChart').innerHTML = byDow.map((v,i)=>`<div class="bc-bar-wrap"><div class="bc-bar orange" style="height:${Math.max(3,Math.round(v/maxDow*76))}px" title="${dow[i]}: ${fmt(v)}"></div></div>`).join('');
-  document.getElementById('dowLabels').innerHTML = dow.map(d=>`<div class="bc-label">${d}</div>`).join('');
-
-  // Size bands
-  const bands = [{label:'Under R50',min:0,max:5000},{label:'R50–R200',min:5000,max:20000},{label:'R200–R500',min:20000,max:50000},{label:'R500–R1k',min:50000,max:100000},{label:'Over R1k',min:100000,max:Infinity}];
-  const bandCounts = bands.map(b=>pays.filter(p=>getAmt(p)>=b.min&&getAmt(p)<b.max).length);
-  const maxBand = Math.max(...bandCounts,1);
-  const colors = ['var(--accent)','var(--blue)','var(--purple)','var(--orange)','var(--yellow)'];
-  document.getElementById('sizeBands').innerHTML = bands.map((b,i)=>`
-    <div class="mb-item">
-      <div class="mb-header"><span class="mb-name">${b.label}</span><span class="mb-val">${bandCounts[i]} txn</span></div>
-      <div class="mb-track"><div class="mb-fill" style="width:${Math.round(bandCounts[i]/maxBand*100)}%;background:${colors[i]}"></div></div>
-    </div>`).join('');
-
-  renderSalesTable();
-}
-
-let salesFiltered = [];
-function renderSalesTable(data) {
-  const rows = data || allData.payments;
-  salesFiltered = rows;
-  document.getElementById('salesCount').textContent = rows.length+' payments';
-  if (!rows.length) { document.getElementById('salesTable').innerHTML='<div class="empty"><div class="empty-icon">↗</div><div class="empty-text">No sales data</div></div>'; return; }
-  const page = pages.sales;
-  const slice = rows.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
-  document.getElementById('salesTable').innerHTML = `<table>
-    <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th></th></tr></thead>
-    <tbody>${slice.map(p=>`<tr>
-      <td style="color:var(--muted);font-size:11px">${fmtDate(p.created_at||p.createdAt)}</td>
-      <td style="font-weight:700;color:var(--accent)">${fmt(getAmt(p))}</td>
-      <td>${methodBadge(getMethod(p))}</td>
-      <td>${statusBadge(p.status)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${p.externalReference||p.metadata?.reference||'—'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Payment")'>→</button></td>
-    </tr>`).join('')}</tbody></table>`;
-  const total = Math.ceil(rows.length/PAGE_SIZE);
-  if (total>1) {
-    document.getElementById('salesPagination').style.display='flex';
-    document.getElementById('salesPageInfo').textContent='Page '+page+' of '+total;
-  } else { document.getElementById('salesPagination').style.display='none'; }
-}
-function filterSales() {
-  const q = document.getElementById('salesSearch').value.toLowerCase();
-  const m = document.getElementById('salesMethod').value.toLowerCase();
-  pages.sales=1;
-  renderSalesTable(allData.payments.filter(p=>
-    (!q||JSON.stringify(p).toLowerCase().includes(q))&&
-    (!m||(getMethod(p)).toLowerCase().includes(m))
-  ));
-}
-
-// ═══════════════════════════════════════════════════
-//  TRANSACTIONS
-// ═══════════════════════════════════════════════════
-let txFiltered = [];
-function renderTxTable(data) {
-  const rows = data||allData.payments;
-  txFiltered = rows;
-  document.getElementById('txCount').textContent = rows.length+' transactions';
-  if (!rows.length) { document.getElementById('txTable').innerHTML='<div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No transactions</div></div>'; return; }
-  const page=pages.tx, slice=rows.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
-  document.getElementById('txTable').innerHTML = `<table>
-    <thead><tr><th>ID</th><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th></th></tr></thead>
-    <tbody>${slice.map(p=>`<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(p.id||'').substring(0,16)}…</td>
-      <td style="font-size:11px;color:var(--muted)">${fmtDate(p.created_at||p.createdAt)}</td>
-      <td style="font-weight:700;color:var(--accent)">${fmt(getAmt(p))}</td>
-      <td>${methodBadge(getMethod(p))}</td>
-      <td>${statusBadge(p.status)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${p.externalReference||'—'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Transaction")'>→</button></td>
-    </tr>`).join('')}</tbody></table>`;
-  const total=Math.ceil(rows.length/PAGE_SIZE);
-  if(total>1){document.getElementById('txPagination').style.display='flex';document.getElementById('txPageInfo').textContent='Page '+page+' of '+total;}
-  else{document.getElementById('txPagination').style.display='none';}
-}
-function filterTx() {
-  const q=document.getElementById('txSearch').value.toLowerCase();
-  const s=document.getElementById('txStatus').value.toLowerCase();
-  const m=document.getElementById('txMethod').value.toLowerCase();
-  pages.tx=1;
-  renderTxTable(allData.payments.filter(p=>
-    (!q||JSON.stringify(p).toLowerCase().includes(q))&&
-    (!s||getStatus(p)===s)&&
-    (!m||(getMethod(p)).toLowerCase().includes(m))
-  ));
-}
-function changePage(which,dir) {
-  const total=Math.ceil((which==='tx'?txFiltered:salesFiltered).length/PAGE_SIZE);
-  pages[which]=Math.max(1,Math.min(total,pages[which]+dir));
-  if(which==='tx')renderTxTable(txFiltered); else renderSalesTable(salesFiltered);
-}
-
-// ═══════════════════════════════════════════════════
-//  PAYOUTS
-// ═══════════════════════════════════════════════════
-function renderPayoutKpis() {
-  const total=allData.payouts.reduce((s,p)=>s+getAmt(p),0);
-  document.getElementById('payoutTotal').textContent=fmt(total);
-  document.getElementById('payoutAvg').textContent=allData.payouts.length?fmt(Math.round(total/allData.payouts.length)):'—';
-  document.getElementById('payoutCount').textContent=allData.payouts.length;
-}
-function renderPayoutsTable() {
-  const rows=allData.payouts;
-  document.getElementById('payoutsCountSub').textContent=rows.length+' payouts';
-  if(!rows.length){document.getElementById('payoutsTable').innerHTML='<div class="empty"><div class="empty-icon">⬖</div><div class="empty-text">No payouts</div></div>';return;}
-  document.getElementById('payoutsTable').innerHTML=`<table>
-    <thead><tr><th>ID</th><th>Date</th><th>Gross</th><th>Net</th><th>Status</th><th></th></tr></thead>
-    <tbody>${rows.map(p=>`<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(p.id||'').substring(0,18)}…</td>
-      <td style="font-size:11px;color:var(--muted)">${fmtDate(p.created_at||p.settledAt)}</td>
-      <td style="font-weight:700;color:var(--accent)">${fmt(p.grossAmount?.value||getAmt(p))}</td>
-      <td style="color:var(--success)">${fmt(p.netAmount?.value||0)}</td>
-      <td>${statusBadge(p.status)}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Payout")'>→</button></td>
-    </tr>`).join('')}</tbody></table>`;
-}
-
-// ═══════════════════════════════════════════════════
-//  REFUNDS
-// ═══════════════════════════════════════════════════
-function renderRefundKpis() {
-  const total=allData.refunds.reduce((s,r)=>s+getAmt(r),0);
-  document.getElementById('refundTotal').textContent=fmt(total);
-  document.getElementById('refundCount').textContent=allData.refunds.length;
-  document.getElementById('refundAvg').textContent=allData.refunds.length?fmt(Math.round(total/allData.refunds.length)):'—';
-  // Method breakdown
-  const byMethod={};
-  allData.refunds.forEach(r=>{ const m=r.refundMethod||r.method||'card'; byMethod[m]=(byMethod[m]||0)+getAmt(r); });
-  const maxM=Math.max(...Object.values(byMethod),1);
-  document.getElementById('refundMethodBreak').innerHTML=Object.entries(byMethod).sort((a,b)=>b[1]-a[1]).map(([m,v])=>`
-    <div class="mb-item">
-      <div class="mb-header"><span class="mb-name">${m}</span><span class="mb-val">${fmt(v)}</span></div>
-      <div class="mb-track"><div class="mb-fill" style="width:${Math.round(v/maxM*100)}%;background:var(--orange)"></div></div>
-    </div>`).join('')||'<div style="color:var(--muted);font-size:12px">No refunds</div>';
-}
-function renderRefundsTable() {
-  const rows=allData.refunds;
-  document.getElementById('refundsCountSub').textContent=rows.length+' refunds';
-  if(!rows.length){document.getElementById('refundsTable').innerHTML='<div class="empty"><div class="empty-icon">↩</div><div class="empty-text">No refunds</div></div>';return;}
-  document.getElementById('refundsTable').innerHTML=`<table>
-    <thead><tr><th>ID</th><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th></th></tr></thead>
-    <tbody>${rows.map(r=>`<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(r.id||'').substring(0,18)}…</td>
-      <td style="font-size:11px;color:var(--muted)">${fmtDate(r.processedAt||r.created_at)}</td>
-      <td style="font-weight:700;color:var(--orange)">${fmt(getAmt(r))}</td>
-      <td>${methodBadge(r.refundMethod||r.method)}</td>
-      <td>${statusBadge(r.status)}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(r).replace(/'/g,"&apos;")},"Refund")'>→</button></td>
-    </tr>`).join('')}</tbody></table>`;
-}
-async function createRefund() {
-  const pid=document.getElementById('refundPaymentId').value.trim();
-  const amt=document.getElementById('refundAmount').value;
-  const reason=document.getElementById('refundReason').value.trim();
-  if(!pid){toast('Payment ID required','','error');return;}
-  const body={paymentReference:pid};
-  if(amt)body.amount={value:parseInt(amt),currencyCode:'ZAR'};
-  if(reason)body.reason=reason;
-  try {
-    const res=await yocoFetch('/v1/refunds','POST',body);
-    toast('Refund created','ID: '+(res.id||'success'),'success');
-    await loadRefunds();
-  } catch(e) {
-    const err=e.uiError||{title:e.message,detail:''};
-    toast(err.title,err.detail,'error');
-  }
-}
-
-// ═══════════════════════════════════════════════════
-//  ORDERS
-// ═══════════════════════════════════════════════════
-function renderOrdersTable(data) {
-  const rows=data||allData.orders;
-  document.getElementById('ordersCountSub').textContent=rows.length+' orders';
-  if(!rows.length){document.getElementById('ordersTable').innerHTML='<div class="empty"><div class="empty-icon">◉</div><div class="empty-text">No orders</div></div>';return;}
-  document.getElementById('ordersTable').innerHTML=`<table>
-    <thead><tr><th>Order ID</th><th>Reference</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
-    <tbody>${rows.map(o=>`<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(o.id||'').substring(0,18)}…</td>
-      <td>${o.humanReference||o.human_reference||'—'}</td>
-      <td style="font-weight:700;color:var(--accent)">${fmt(o.totalAmount?.value||getAmt(o))}</td>
-      <td>${statusBadge(o.status)}</td>
-      <td style="font-size:11px;color:var(--muted)">${fmtDate(o.created_at||o.createdAt)}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(o).replace(/'/g,"&apos;")},"Order")'>→</button></td>
-    </tr>`).join('')}</tbody></table>`;
-}
-function filterOrders() {
-  const q=document.getElementById('orderSearch').value.toLowerCase();
-  const s=document.getElementById('orderStatus').value.toLowerCase();
-  renderOrdersTable(allData.orders.filter(o=>(!q||JSON.stringify(o).toLowerCase().includes(q))&&(!s||(o.status||'').toLowerCase()===s)));
-}
-
-// ═══════════════════════════════════════════════════
-//  PAYMENT LINKS & RAW
-// ═══════════════════════════════════════════════════
-async function fetchPaymentLink() {
-  const id=document.getElementById('plinkId').value.trim();
-  if(!id){toast('Enter a payment link ID','','error');return;}
-  try { const d=await yocoFetch('/v1/payment_links/'+id); openDrawer(d,'Payment Link'); }
-  catch(e){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
-}
-async function rawQuery() {
-  const method=document.getElementById('rawMethod').value;
-  const endpoint=document.getElementById('rawEndpoint').value.trim();
-  const bodyStr=document.getElementById('rawBody').value.trim();
-  let body=null;
-  if(bodyStr){try{body=JSON.parse(bodyStr);}catch(e){toast('Invalid JSON body','','error');return;}}
-  document.getElementById('rawResponse').textContent='Loading…';
-  try {
-    const d=await yocoFetch(endpoint,method,body);
-    document.getElementById('rawResponse').textContent=JSON.stringify(d,null,2);
-  } catch(e) {
-    const err=e.uiError||{title:e.message,detail:''};
-    document.getElementById('rawResponse').textContent=err.title+(err.detail?'\n'+err.detail:'');
-  }
-}
-
-// ═══════════════════════════════════════════════════
-//  DRAWER & UTILS
-// ═══════════════════════════════════════════════════
-function openDrawer(obj, label) {
-  if (typeof obj === 'string') { try { obj=JSON.parse(obj); } catch(_){} }
-  document.getElementById('drawerTitle').textContent=label+' Details';
-  document.getElementById('drawerId').textContent=obj.id||'';
-  document.getElementById('drawerContent').innerHTML=Object.entries(obj).map(([k,v])=>{
-    const isAmt=k.toLowerCase().includes('amount')&&typeof v==='number';
-    const val=typeof v==='object'?JSON.stringify(v,null,2):String(v??'—');
-    return `<div class="detail-row"><div class="detail-key">${k}</div><div class="detail-val">${isAmt?fmt(v):val}</div></div>`;
-  }).join('');
-  document.getElementById('drawerOverlay').classList.add('open');
-  setTimeout(()=>document.getElementById('drawer').classList.add('open'),10);
-}
-function closeDrawer() {
-  document.getElementById('drawer').classList.remove('open');
-  setTimeout(()=>document.getElementById('drawerOverlay').classList.remove('open'),280);
-}
-
-function exportCSV(resource) {
-  const rows=allData[resource];
-  if(!rows.length){toast('No data to export','','error');return;}
-  const keys=Object.keys(rows[0]).filter(k=>typeof rows[0][k]!=='object');
-  const csv=[keys.join(','),...rows.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='yoco-'+resource+'-'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
-  toast('Exported',''+rows.length+' '+resource+' downloaded','success',3000);
-}
-
-// ═══════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
-loadBizSettings();
-
-// Firebase status poll
-(function checkFb(){
-  const dot=document.getElementById('fbDot'),dot2=document.getElementById('fbDot2');
-  const txt=document.getElementById('fbText'),txt2=document.getElementById('fbText2');
-  if(window._fbReady){
-    [dot,dot2].forEach(d=>{if(d)d.className='fb-dot ready';});
-    [txt,txt2].forEach(t=>{if(t){t.textContent='Firebase ready';t.style.color='var(--success)';}});
-  } else { setTimeout(checkFb,400); }
-})();
-</script>
-</body>
-</html>
+// ═══════════════════════════════════════
+//  OVERVIEW
+// ═══════════════════════════════════════
+function renderOverview(){
+  const pays=allData.payments;
+  const succ=pays.filter(isSuccess);
+  const gross=succ.reduce((s,p)=>s+getAmt(p),0);
+  const v
