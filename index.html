@@ -132,6 +132,7 @@
     background: var(--muted); flex-shrink: 0;
   }
   .status-dot.live { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
+  .status-dot.error { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
   /* STAT CARDS */
@@ -411,7 +412,7 @@
     <div class="key-label">🔑 API KEY</div>
     <input class="sidebar-key-input" id="apiKeyInput" type="password"
       placeholder="yoco_live_…"
-      value="yoco_live_7081d738eb6aaa9b_6fd7999ac3beb6f7aa921e69b9181284">
+>
     <div class="sidebar-key-actions">
       <button class="btn btn-outline" onclick="toggleKeyVisibility()">Show</button>
       <button class="btn btn-primary" onclick="connect()">Connect</button>
@@ -656,14 +657,17 @@
 
 <script>
 const BASE_URL = 'https://api.yoco.com';
-let apiKey = '';
+// API key is NEVER stored in JS memory — always read fresh from the DOM input
+let connected = false;
 let allData = { payments: [], orders: [], refunds: [], payouts: [] };
 let pages = { payments: 1, orders: 1 };
 const PAGE_SIZE = 15;
 
 // ── UTILITIES ──────────────────────────────────────────
+// Always read fresh from the input — key is never held in a variable
 function getKey() { return document.getElementById('apiKeyInput').value.trim(); }
-function fmt(cents) { return 'R ' + (cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+function fmt(cents) { return 'R\u00a0' + (cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -681,12 +685,53 @@ function statusBadge(s) {
   const cls = map[(s||'').toLowerCase()] || 'badge-muted';
   return `<span class="badge ${cls}">${s || '—'}</span>`;
 }
-function toast(msg, type = 'info') {
+function toast(msg, type = 'info', duration = 6000) {
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span><span>${msg}</span>`;
+  t.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span><span style="flex:1">${msg}</span>`;
   document.getElementById('toastContainer').appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+  setTimeout(() => t.remove(), duration);
+}
+
+// ── DETAILED ERROR PARSER ─────────────────────────────
+function parseApiError(status, body, fetchError) {
+  // Network / CORS failures — fetch itself throws before we get a response
+  if (fetchError) {
+    const msg = fetchError.message || '';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('network')) {
+      return {
+        title: 'CORS / Network Block',
+        detail: 'Your browser blocked the request to api.yoco.com. ' +
+          'Browsers enforce CORS and cannot call the Yoco API directly from a local HTML file or a different origin. ' +
+          'Solutions: (1) Run this file through a local server with a CORS proxy, ' +
+          '(2) Use a browser extension like "CORS Unblock", or ' +
+          '(3) Move API calls to your own backend and proxy them here.',
+        hint: 'Use the Raw Query tab to test — the same restriction applies there.'
+      };
+    }
+    return { title: 'Network Error', detail: msg, hint: 'Check your internet connection.' };
+  }
+
+  // HTTP error responses
+  const messages = {
+    400: 'Bad Request — the request was malformed or missing required fields.',
+    401: 'Unauthorised — your API key is invalid, expired, or was entered incorrectly. Double-check it in the Yoco Developer Portal.',
+    403: 'Forbidden — your key does not have permission for this endpoint. Check that you are using a live key for live data.',
+    404: 'Not Found — the resource does not exist.',
+    422: 'Unprocessable — the request body was valid JSON but contained invalid values.',
+    429: 'Rate Limited — too many requests. Wait a moment then try again.',
+    500: 'Yoco Server Error — the issue is on Yoco's side. Try again shortly.',
+    502: 'Bad Gateway — Yoco's API returned an unexpected response.',
+    503: 'Service Unavailable — Yoco's API is temporarily down.'
+  };
+
+  const bodyMsg = body?.message || body?.error?.message || body?.error || body?.detail || '';
+  const httpMsg = messages[status] || `HTTP ${status}`;
+  return {
+    title: `Error ${status}`,
+    detail: httpMsg + (bodyMsg ? ' — ' + bodyMsg : ''),
+    hint: status === 401 ? 'Tip: live keys start with yoco_live_' : ''
+  };
 }
 
 // ── NAV ────────────────────────────────────────────────
@@ -699,14 +744,14 @@ function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('section-' + id).classList.add('active');
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(n => { if (n.textContent.includes(sectionNames[id]?.substring(0, 5))) n.classList.add('active'); });
   document.querySelectorAll('.nav-item')[Object.keys(sectionNames).indexOf(id)]?.classList.add('active');
   document.getElementById('pageTitle').textContent = sectionNames[id];
-  if (id === 'payments' && allData.payments.length === 0 && apiKey) loadPayments();
-  if (id === 'orders' && allData.orders.length === 0 && apiKey) loadOrders();
-  if (id === 'refunds' && allData.refunds.length === 0 && apiKey) loadRefunds();
-  if (id === 'payouts' && allData.payouts.length === 0 && apiKey) loadPayouts();
+  if (connected) {
+    if (id === 'payments' && allData.payments.length === 0) loadPayments();
+    if (id === 'orders'   && allData.orders.length === 0)   loadOrders();
+    if (id === 'refunds'  && allData.refunds.length === 0)  loadRefunds();
+    if (id === 'payouts'  && allData.payouts.length === 0)  loadPayouts();
+  }
 }
 document.querySelectorAll('.nav-item').forEach((n, i) => {
   n.addEventListener('click', () => {
@@ -725,42 +770,71 @@ function toggleKeyVisibility() {
 
 // ── CONNECT ────────────────────────────────────────────
 async function connect() {
-  apiKey = getKey();
-  if (!apiKey) { toast('Please enter an API key', 'error'); return; }
-  document.getElementById('statusDot').className = 'status-dot';
-  document.getElementById('statusText').textContent = 'Connecting…';
+  const key = getKey();
+  if (!key) { toast('Please enter an API key', 'error'); return; }
+
+  setStatus('connecting');
   try {
+    // Use payments as the auth probe — lightweight, always present
+    await yocoFetch('/v1/payments?count=1');
+    connected = true;
+    setStatus('live');
+    // Load all data in parallel after confirmed auth
     await Promise.all([loadPayments(true), loadOrders(true), loadRefunds(true), loadPayouts(true)]);
-    document.getElementById('statusDot').className = 'status-dot live';
-    document.getElementById('statusText').textContent = 'Live';
-    toast('Connected to Yoco API', 'success');
+    toast('Connected — live data loaded', 'success');
     renderOverview();
   } catch(e) {
-    document.getElementById('statusDot').className = 'status-dot';
-    document.getElementById('statusText').textContent = 'Error';
-    toast('Connection failed: ' + e.message, 'error');
+    connected = false;
+    setStatus('error');
+    // e.uiError is set by yocoFetch with the parsed detail
+    const err = e.uiError || { title: 'Connection Failed', detail: e.message, hint: '' };
+    toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>${err.hint ? '<br><em style="font-size:10px;color:var(--warning)">' + err.hint + '</em>' : ''}`, 'error', 10000);
   }
 }
 
+function setStatus(s) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  const map = { connecting: ['', 'Connecting…'], live: ['live', 'Live'], error: ['error', 'Error'], disconnected: ['', 'Disconnected'] };
+  const [cls, label] = map[s] || ['', s];
+  dot.className = 'status-dot' + (cls ? ' ' + cls : '');
+  txt.textContent = label;
+}
+
 // ── API CALL ───────────────────────────────────────────
+// Key is read fresh from DOM on every call — never stored
 async function yocoFetch(path, method = 'GET', body = null) {
-  const opts = {
-    method,
-    headers: {
-      'Authorization': 'Bearer ' + (apiKey || getKey()),
-      'Content-Type': 'application/json'
-    }
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(BASE_URL + path, opts);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || data.error || 'API Error ' + res.status);
-  return data;
+  const key = getKey();
+  if (!key) throw Object.assign(new Error('No API key entered'), { uiError: { title: 'No API Key', detail: 'Enter your Yoco API key in the sidebar and click Connect.', hint: '' } });
+
+  const headers = { 'Authorization': 'Bearer ' + key };
+  // Only set Content-Type on requests with a body — avoids CORS preflight on GET
+  if (body) headers['Content-Type'] = 'application/json';
+
+  let res, responseBody;
+  try {
+    res = await fetch(BASE_URL + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  } catch (fetchErr) {
+    const err = parseApiError(null, null, fetchErr);
+    throw Object.assign(fetchErr, { uiError: err });
+  }
+
+  // Try to parse JSON — Yoco always returns JSON, but guard anyway
+  try { responseBody = await res.json(); } catch (_) { responseBody = {}; }
+
+  if (!res.ok) {
+    const err = parseApiError(res.status, responseBody, null);
+    const e = new Error(err.title);
+    e.uiError = err;
+    e.status = res.status;
+    e.body = responseBody;
+    throw e;
+  }
+  return responseBody;
 }
 
 // ── LOAD PAYMENTS ──────────────────────────────────────
 async function loadPayments(silent = false) {
-  if (!silent) { if (!apiKey) { apiKey = getKey(); } }
   try {
     const data = await yocoFetch('/v1/payments?count=100');
     allData.payments = data.payments || data.data || (Array.isArray(data) ? data : []);
@@ -769,7 +843,7 @@ async function loadPayments(silent = false) {
     document.getElementById('statPaymentsBadge').textContent = 'live data';
     return data;
   } catch(e) {
-    if (!silent) toast('Payments error: ' + e.message, 'error');
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
     throw e;
   }
 }
@@ -831,7 +905,7 @@ async function loadOrders(silent = false) {
     document.getElementById('statOrdersBadge').textContent = 'live data';
     return data;
   } catch(e) {
-    if (!silent) toast('Orders error: ' + e.message, 'error');
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
     throw e;
   }
 }
@@ -883,7 +957,7 @@ async function loadRefunds(silent = false) {
     renderRefundStats();
     return data;
   } catch(e) {
-    if (!silent) toast('Refunds error: ' + e.message, 'error');
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
     throw e;
   }
 }
@@ -949,7 +1023,7 @@ async function loadPayouts(silent = false) {
     document.getElementById('statPayoutsBadge').textContent = 'live data';
     return data;
   } catch(e) {
-    if (!silent) toast('Payouts error: ' + e.message, 'error');
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
     throw e;
   }
 }
@@ -1092,7 +1166,7 @@ function exportCSV(resource) {
 
 // ── REFRESH ALL ────────────────────────────────────────
 async function refreshAll() {
-  if (!apiKey) { toast('Connect first', 'error'); return; }
+  if (!connected) { toast('Connect first — enter your API key and click Connect', 'error'); return; }
   await connect();
 }
 
