@@ -731,7 +731,7 @@
 </main>
 
 <script>
-const BASE_URL = 'https://api.yoco.com';
+const BASE_URL = 'https://corsproxy.io/?url=https://api.yoco.com';
 // API key is NEVER stored in JS memory — always read fresh from the DOM input
 let connected = false;
 let allData = { payments: [], orders: [], refunds: [], payouts: [] };
@@ -784,46 +784,36 @@ function toast(title, detail, type = 'info', duration = 7000) {
   setTimeout(() => t.remove(), duration);
 }
 
-// ── DETAILED ERROR PARSER ─────────────────────────────
+// ── ERROR PARSER ─────────────────────────────────────
 function parseApiError(status, body, fetchError) {
-  // Network / CORS failures — fetch itself throws before we get a response
   if (fetchError) {
     const msg = fetchError.message || '';
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS') || msg.includes('network')) {
-      return {
-        title: 'CORS / Network Block',
-        detail: 'Your browser blocked the request to api.yoco.com. ' +
-          'Browsers enforce CORS and cannot call the Yoco API directly from a local HTML file or a different origin. ' +
-          'Solutions: (1) Run this file through a local server with a CORS proxy, ' +
-          '(2) Use a browser extension like "CORS Unblock", or ' +
-          '(3) Move API calls to your own backend and proxy them here.',
-        hint: 'Use the Raw Query tab to test — the same restriction applies there.'
-      };
-    }
-    return { title: 'Network Error', detail: msg, hint: 'Check your internet connection.' };
+    return {
+      title: 'Network Error',
+      detail: 'Could not reach the Yoco API via proxy. Check your internet connection and try again. (' + msg + ')',
+      hint: ''
+    };
   }
-
-  // HTTP error responses
-    const messages = {
-    400: "Bad Request — the request was malformed or missing required fields.",
-    401: "Unauthorised — your API key is invalid, expired, or was entered incorrectly. Double-check it in the Yoco Developer Portal.",
-    403: "Forbidden — your key does not have permission for this endpoint. Check that you are using a live key for live data.",
+  const messages = {
+    400: "Bad Request — malformed request or missing required fields.",
+    401: "Unauthorised — your API key is invalid or incorrect. Double-check it in the Yoco Developer Portal.",
+    403: "Forbidden — this key does not have permission for this endpoint.",
     404: "Not Found — the resource does not exist.",
-    422: "Unprocessable — the request body was valid JSON but contained invalid values.",
-    429: "Rate Limited — too many requests. Wait a moment then try again.",
-    500: "Yoco Server Error — the issue is on Yoco's side. Try again shortly.",
-    502: "Bad Gateway — Yoco's API returned an unexpected response.",
-    503: "Service Unavailable — Yoco's API is temporarily down."
+    422: "Unprocessable — request body contained invalid values.",
+    429: "Rate Limited — too many requests. Wait a moment and try again.",
+    500: "Yoco Server Error — issue on Yoco's side. Try again shortly.",
+    502: "Bad Gateway — Yoco API returned an unexpected response.",
+    503: "Service Unavailable — Yoco API is temporarily down."
   };
-
   const bodyMsg = body?.message || body?.error?.message || body?.error || body?.detail || '';
-  const httpMsg = messages[status] || `HTTP ${status}`;
+  const httpMsg = messages[status] || ('HTTP ' + status);
   return {
-    title: `Error ${status}`,
+    title: 'Error ' + status,
     detail: httpMsg + (bodyMsg ? ' — ' + bodyMsg : ''),
-    hint: status === 401 ? 'Tip: live keys start with yoco_live_' : ''
+    hint: status === 401 ? 'Live keys start with yoco_live_' : ''
   };
 }
+
 
 // ── NAV ────────────────────────────────────────────────
 const sectionNames = {
@@ -923,56 +913,28 @@ function showConnectError(err) {
     panel = document.createElement('div');
     panel.id = 'connectErrorPanel';
     panel.style.cssText = 'background:#1a0a0a;border:1px solid var(--danger);border-radius:10px;padding:16px;margin:16px 0;font-size:12px;line-height:1.6';
-    // Insert before the first section
     const firstSection = document.querySelector('.section');
     firstSection.parentNode.insertBefore(panel, firstSection);
   }
   panel.innerHTML = '';
 
-  const title = document.createElement('div');
-  title.style.cssText = 'color:var(--danger);font-weight:700;font-size:13px;margin-bottom:8px';
-  title.textContent = '✗ ' + err.title;
-  panel.appendChild(title);
+  const titleEl = document.createElement('div');
+  titleEl.style.cssText = 'color:var(--danger);font-weight:700;font-size:13px;margin-bottom:8px';
+  titleEl.textContent = '✗ ' + err.title;
+  panel.appendChild(titleEl);
 
   if (err.detail) {
     const detail = document.createElement('div');
-    detail.style.cssText = 'color:var(--text);margin-bottom:8px';
+    detail.style.cssText = 'color:var(--text);margin-bottom:6px';
     detail.textContent = err.detail;
     panel.appendChild(detail);
   }
-
   if (err.hint) {
     const hint = document.createElement('div');
     hint.style.cssText = 'color:var(--warning);font-style:italic';
     hint.textContent = '💡 ' + err.hint;
     panel.appendChild(hint);
   }
-
-  // Always show CORS guidance
-  const cors = document.createElement('div');
-  cors.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);color:var(--muted)';
-  cors.innerHTML = '';
-  const corsTitle = document.createElement('div');
-  corsTitle.style.cssText = 'color:var(--warning);font-weight:700;margin-bottom:4px';
-  corsTitle.textContent = 'Important — Browser CORS Restriction:';
-  cors.appendChild(corsTitle);
-  const corsText = document.createElement('div');
-  corsText.textContent = 'Browsers block direct calls to api.yoco.com from HTML files due to CORS policy. To use this dashboard you need one of:';
-  cors.appendChild(corsText);
-  const list = document.createElement('ol');
-  list.style.cssText = 'margin:6px 0 0 16px';
-  [
-    'A backend proxy (Node/Python server) that forwards requests to Yoco and adds CORS headers',
-    'A browser extension like "CORS Unblock" or "Allow CORS" (Chrome/Firefox) — enable it, then retry',
-    'Open this file via a local dev server (e.g. npx serve .) instead of file://',
-  ].forEach(t => {
-    const li = document.createElement('li');
-    li.style.cssText = 'margin-bottom:4px';
-    li.textContent = t;
-    list.appendChild(li);
-  });
-  cors.appendChild(list);
-  panel.appendChild(cors);
 }
 
 function clearConnectError() {
