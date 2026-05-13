@@ -729,16 +729,16 @@ function parseApiError(status, body, fetchError) {
   }
 
   // HTTP error responses
-  const messages = {
-    400: 'Bad Request — the request was malformed or missing required fields.',
-    401: 'Unauthorised — your API key is invalid, expired, or was entered incorrectly. Double-check it in the Yoco Developer Portal.',
-    403: 'Forbidden — your key does not have permission for this endpoint. Check that you are using a live key for live data.',
-    404: 'Not Found — the resource does not exist.',
-    422: 'Unprocessable — the request body was valid JSON but contained invalid values.',
-    429: 'Rate Limited — too many requests. Wait a moment then try again.',
-    500: 'Yoco Server Error — the issue is on Yoco's side. Try again shortly.',
-    502: 'Bad Gateway — Yoco's API returned an unexpected response.',
-    503: 'Service Unavailable — Yoco's API is temporarily down.'
+    const messages = {
+    400: "Bad Request — the request was malformed or missing required fields.",
+    401: "Unauthorised — your API key is invalid, expired, or was entered incorrectly. Double-check it in the Yoco Developer Portal.",
+    403: "Forbidden — your key does not have permission for this endpoint. Check that you are using a live key for live data.",
+    404: "Not Found — the resource does not exist.",
+    422: "Unprocessable — the request body was valid JSON but contained invalid values.",
+    429: "Rate Limited — too many requests. Wait a moment then try again.",
+    500: "Yoco Server Error — the issue is on Yoco's side. Try again shortly.",
+    502: "Bad Gateway — Yoco's API returned an unexpected response.",
+    503: "Service Unavailable — Yoco's API is temporarily down."
   };
 
   const bodyMsg = body?.message || body?.error?.message || body?.error || body?.detail || '';
