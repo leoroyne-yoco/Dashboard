@@ -376,6 +376,77 @@
     .panel-grid { grid-template-columns: 1fr; }
   }
 </style>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAUyWmw_8mw2uNuusYu3TF9flpqPOWa71s",
+    authDomain: "yoco-pos-dashbord.firebaseapp.com",
+    projectId: "yoco-pos-dashbord",
+    storageBucket: "yoco-pos-dashbord.firebasestorage.app",
+    messagingSenderId: "633313593449",
+    appId: "1:633313593449:web:a9ed814bc0b72de0043af8",
+    measurementId: "G-8KM0SSYRKH"
+  };
+
+  const app   = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const db    = getFirestore(app);
+
+  // Expose to window so the main (non-module) script can call these
+  window._fb = {
+    analytics,
+    db,
+    logEvent,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy,
+    limit,
+    serverTimestamp,
+
+    // Log a named event to Analytics
+    track(eventName, params = {}) {
+      try { logEvent(analytics, eventName, params); } catch(e) { console.warn('Analytics:', e); }
+    },
+
+    // Save a connection attempt record to Firestore
+    async saveSession(status, keyPrefix) {
+      try {
+        await addDoc(collection(db, 'sessions'), {
+          status,
+          keyPrefix,          // only first 12 chars — never the full key
+          ts: serverTimestamp()
+        });
+      } catch(e) { console.warn('Firestore session save:', e); }
+    },
+
+    // Persist snapshot of summary stats after a successful connect
+    async saveSnapshot(stats) {
+      try {
+        await addDoc(collection(db, 'snapshots'), {
+          ...stats,
+          ts: serverTimestamp()
+        });
+      } catch(e) { console.warn('Firestore snapshot save:', e); }
+    },
+
+    // Retrieve last N snapshots for trend display
+    async getSnapshots(n = 10) {
+      try {
+        const q = query(collection(db, 'snapshots'), orderBy('ts', 'desc'), limit(n));
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch(e) { console.warn('Firestore getSnapshots:', e); return []; }
+    }
+  };
+
+  console.log('Firebase initialised ✓ — Analytics + Firestore ready');
+</script>
 </head>
 <body>
 
@@ -420,6 +491,10 @@
     <div class="key-status">
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">Disconnected</span>
+    </div>
+    <div class="key-status" style="margin-top:8px" id="fbStatus">
+      <div class="status-dot" id="fbDot"></div>
+      <span id="fbText" style="font-size:9px">Firebase loading…</span>
     </div>
   </div>
 </aside>
@@ -804,6 +879,18 @@ async function connect() {
     await Promise.all([loadPayments(true), loadOrders(true), loadRefunds(true), loadPayouts(true)]);
     toast('Connected', 'Live data loaded from Yoco API', 'success');
     renderOverview();
+    // Firebase: track successful connect + save snapshot
+    if (window._fb) {
+      window._fb.track('yoco_connect_success', { key_prefix: getKey().substring(0,12) });
+      window._fb.saveSession('success', getKey().substring(0,12));
+      window._fb.saveSnapshot({
+        payments: allData.payments.length,
+        orders:   allData.orders.length,
+        refunds:  allData.refunds.length,
+        payouts:  allData.payouts.length,
+        totalPaymentValue: allData.payments.reduce((s,p) => s + (p.amount?.value || p.amount || 0), 0)
+      });
+    }
   } catch(e) {
     connected = false;
     setStatus('error');
@@ -813,6 +900,10 @@ async function connect() {
     const detail = [err.detail, err.hint].filter(Boolean).join(' — ');
     toast(err.title, detail, 'error', 12000);
     showConnectError(err);
+    if (window._fb) {
+      window._fb.track('yoco_connect_error', { error: err.title });
+      window._fb.saveSession('error', getKey().substring(0,12));
+    }
   }
 }
 
@@ -1260,8 +1351,24 @@ async function refreshAll() {
 
 // ── INIT ───────────────────────────────────────────────
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
-// Re-click nav to set active state properly
 document.querySelectorAll('.nav-item')[0].classList.add('active');
+
+// ── FIREBASE STATUS CHECK ──────────────────────────────
+// The module script is async — poll until _fb is available
+(function checkFb() {
+  const dot  = document.getElementById('fbDot');
+  const text = document.getElementById('fbText');
+  if (!dot || !text) return;
+  if (window._fb) {
+    dot.className  = 'status-dot live';
+    text.textContent = 'Firebase ready';
+    text.style.color = 'var(--success)';
+  } else {
+    dot.className  = 'status-dot';
+    text.textContent = 'Firebase loading…';
+    setTimeout(checkFb, 500);
+  }
+})();
 </script>
 </body>
 </html>
