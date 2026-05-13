@@ -685,10 +685,26 @@ function statusBadge(s) {
   const cls = map[(s||'').toLowerCase()] || 'badge-muted';
   return `<span class="badge ${cls}">${s || '—'}</span>`;
 }
-function toast(msg, type = 'info', duration = 6000) {
+function toast(title, detail, type = 'info', duration = 7000) {
+  // Support old single-arg calls: toast('msg', 'error') -> remap
+  if (typeof detail !== 'string' || ['info','success','error','warning'].includes(detail)) {
+    duration = type && typeof type === 'number' ? type : 7000;
+    type = typeof detail === 'string' && ['info','success','error','warning'].includes(detail) ? detail : 'info';
+    detail = '';
+  }
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</span><span style="flex:1">${msg}</span>`;
+  const titleEl = document.createElement('span');
+  titleEl.style.cssText = 'font-weight:700';
+  titleEl.textContent = icon + '  ' + title;
+  t.appendChild(titleEl);
+  if (detail) {
+    const d = document.createElement('div');
+    d.style.cssText = 'font-size:11px;font-weight:400;margin-top:4px;opacity:0.85;line-height:1.4';
+    d.textContent = detail;
+    t.appendChild(d);
+  }
   document.getElementById('toastContainer').appendChild(t);
   setTimeout(() => t.remove(), duration);
 }
@@ -771,24 +787,32 @@ function toggleKeyVisibility() {
 // ── CONNECT ────────────────────────────────────────────
 async function connect() {
   const key = getKey();
-  if (!key) { toast('Please enter an API key', 'error'); return; }
+  if (!key) { toast('No API key entered', 'Enter your Yoco live key in the sidebar field above', 'error'); return; }
+
+  // Visual feedback on button
+  const btn = document.querySelector('.sidebar-key-actions .btn-primary');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
 
   setStatus('connecting');
   try {
-    // Use payments as the auth probe — lightweight, always present
+    // Probe auth with a minimal request before loading everything
     await yocoFetch('/v1/payments?count=1');
     connected = true;
     setStatus('live');
-    // Load all data in parallel after confirmed auth
+    if (btn) { btn.textContent = '✓ Live'; btn.disabled = false; }
     await Promise.all([loadPayments(true), loadOrders(true), loadRefunds(true), loadPayouts(true)]);
-    toast('Connected — live data loaded', 'success');
+    toast('Connected', 'Live data loaded from Yoco API', 'success');
     renderOverview();
   } catch(e) {
     connected = false;
     setStatus('error');
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
     // e.uiError is set by yocoFetch with the parsed detail
     const err = e.uiError || { title: 'Connection Failed', detail: e.message, hint: '' };
-    toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>${err.hint ? '<br><em style="font-size:10px;color:var(--warning)">' + err.hint + '</em>' : ''}`, 'error', 10000);
+    const detail = [err.detail, err.hint].filter(Boolean).join(' — ');
+    toast(err.title, detail, 'error', 12000);
+    showConnectError(err);
   }
 }
 
@@ -799,6 +823,70 @@ function setStatus(s) {
   const [cls, label] = map[s] || ['', s];
   dot.className = 'status-dot' + (cls ? ' ' + cls : '');
   txt.textContent = label;
+  if (s === 'live') clearConnectError();
+}
+
+function showConnectError(err) {
+  let panel = document.getElementById('connectErrorPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'connectErrorPanel';
+    panel.style.cssText = 'background:#1a0a0a;border:1px solid var(--danger);border-radius:10px;padding:16px;margin:16px 0;font-size:12px;line-height:1.6';
+    // Insert before the first section
+    const firstSection = document.querySelector('.section');
+    firstSection.parentNode.insertBefore(panel, firstSection);
+  }
+  panel.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:var(--danger);font-weight:700;font-size:13px;margin-bottom:8px';
+  title.textContent = '✗ ' + err.title;
+  panel.appendChild(title);
+
+  if (err.detail) {
+    const detail = document.createElement('div');
+    detail.style.cssText = 'color:var(--text);margin-bottom:8px';
+    detail.textContent = err.detail;
+    panel.appendChild(detail);
+  }
+
+  if (err.hint) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'color:var(--warning);font-style:italic';
+    hint.textContent = '💡 ' + err.hint;
+    panel.appendChild(hint);
+  }
+
+  // Always show CORS guidance
+  const cors = document.createElement('div');
+  cors.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);color:var(--muted)';
+  cors.innerHTML = '';
+  const corsTitle = document.createElement('div');
+  corsTitle.style.cssText = 'color:var(--warning);font-weight:700;margin-bottom:4px';
+  corsTitle.textContent = 'Important — Browser CORS Restriction:';
+  cors.appendChild(corsTitle);
+  const corsText = document.createElement('div');
+  corsText.textContent = 'Browsers block direct calls to api.yoco.com from HTML files due to CORS policy. To use this dashboard you need one of:';
+  cors.appendChild(corsText);
+  const list = document.createElement('ol');
+  list.style.cssText = 'margin:6px 0 0 16px';
+  [
+    'A backend proxy (Node/Python server) that forwards requests to Yoco and adds CORS headers',
+    'A browser extension like "CORS Unblock" or "Allow CORS" (Chrome/Firefox) — enable it, then retry',
+    'Open this file via a local dev server (e.g. npx serve .) instead of file://',
+  ].forEach(t => {
+    const li = document.createElement('li');
+    li.style.cssText = 'margin-bottom:4px';
+    li.textContent = t;
+    list.appendChild(li);
+  });
+  cors.appendChild(list);
+  panel.appendChild(cors);
+}
+
+function clearConnectError() {
+  const panel = document.getElementById('connectErrorPanel');
+  if (panel) panel.remove();
 }
 
 // ── API CALL ───────────────────────────────────────────
@@ -843,7 +931,7 @@ async function loadPayments(silent = false) {
     document.getElementById('statPaymentsBadge').textContent = 'live data';
     return data;
   } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
     throw e;
   }
 }
@@ -905,7 +993,7 @@ async function loadOrders(silent = false) {
     document.getElementById('statOrdersBadge').textContent = 'live data';
     return data;
   } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
     throw e;
   }
 }
@@ -957,7 +1045,7 @@ async function loadRefunds(silent = false) {
     renderRefundStats();
     return data;
   } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
     throw e;
   }
 }
@@ -1023,7 +1111,7 @@ async function loadPayouts(silent = false) {
     document.getElementById('statPayoutsBadge').textContent = 'live data';
     return data;
   } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(`<strong>${err.title}</strong><br><span style="font-weight:400;font-size:11px">${err.detail}</span>`, 'error', 8000); }
+    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
     throw e;
   }
 }
