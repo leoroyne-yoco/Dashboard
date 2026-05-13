@@ -3,385 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yoco API Dashboard</title>
+<title>Merchant Dashboard — Yoco</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0c10;
-    --surface: #111318;
-    --card: #161b24;
-    --border: #1f2733;
-    --accent: #00d4aa;
-    --accent2: #ff6b35;
-    --accent3: #7c6af7;
-    --text: #e8ecf1;
-    --muted: #64748b;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --info: #3b82f6;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
 
-  /* NOISE TEXTURE */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none; z-index: 0;
-  }
-
-  /* SIDEBAR */
-  .sidebar {
-    position: fixed; left: 0; top: 0; bottom: 0;
-    width: 240px;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    padding: 24px 0;
-    z-index: 100;
-  }
-  .logo {
-    padding: 0 24px 28px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 20px;
-  }
-  .logo-text {
-    font-size: 22px; font-weight: 800;
-    letter-spacing: -0.5px;
-    background: linear-gradient(135deg, var(--accent), var(--accent3));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .logo-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 11px 24px;
-    cursor: pointer; color: var(--muted);
-    font-size: 14px; font-weight: 600;
-    transition: all 0.2s; border-left: 3px solid transparent;
-    position: relative;
-  }
-  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
-  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,212,170,0.06); }
-  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-  .sidebar-footer {
-    margin-top: auto; padding: 20px 24px;
-    border-top: 1px solid var(--border);
-  }
-  .key-label { font-size: 10px; color: var(--accent); font-weight: 600; margin-bottom: 6px; letter-spacing: 0.5px; }
-  .sidebar-key-input {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 8px 10px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-    margin-bottom: 8px;
-  }
-  .sidebar-key-input:focus { border-color: var(--accent); }
-  .sidebar-key-actions { display: flex; gap: 6px; }
-  .sidebar-key-actions .btn { flex: 1; font-size: 11px; padding: 7px 8px; }
-  .key-status { font-size: 10px; color: var(--muted); margin-top: 8px; display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; }
-
-  /* MAIN */
-  .main {
-    margin-left: 240px;
-    padding: 32px;
-    position: relative; z-index: 1;
-  }
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 32px;
-  }
-  .page-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
-  .page-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
-  .topbar-right { display: flex; align-items: center; gap: 12px; }
-
-
-  .btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    transition: all 0.2s;
-  }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { background: #00f0c0; transform: translateY(-1px); }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-sm { padding: 6px 14px; font-size: 12px; }
-  .btn-danger { background: var(--danger); color: #fff; }
-
-  /* STATUS DOT */
-  .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--muted); flex-shrink: 0;
-  }
-  .status-dot.live { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
-  .status-dot.error { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-  /* STAT CARDS */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-  .stat-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .stat-card:hover { border-color: rgba(0,212,170,0.3); }
-  .stat-card::after {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  }
-  .stat-card.green::after { background: linear-gradient(90deg, var(--accent), transparent); }
-  .stat-card.orange::after { background: linear-gradient(90deg, var(--accent2), transparent); }
-  .stat-card.purple::after { background: linear-gradient(90deg, var(--accent3), transparent); }
-  .stat-card.blue::after { background: linear-gradient(90deg, var(--info), transparent); }
-  .stat-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
-  .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
-  .stat-value.mono { font-family: 'JetBrains Mono', monospace; font-size: 22px; }
-  .stat-badge {
-    display: inline-block;
-    margin-top: 6px;
-    font-size: 10px; font-weight: 700;
-    padding: 2px 8px; border-radius: 20px;
-    background: rgba(0,212,170,0.1); color: var(--accent);
-  }
-
-  /* TABS */
-  .tabs {
-    display: flex; gap: 4px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px; padding: 4px;
-    margin-bottom: 24px;
-    width: fit-content;
-  }
-  .tab {
-    padding: 8px 18px;
-    border-radius: 7px;
-    cursor: pointer;
-    font-size: 13px; font-weight: 600;
-    color: var(--muted);
-    transition: all 0.2s; border: none; background: transparent;
-  }
-  .tab.active { background: var(--accent); color: #000; }
-  .tab:hover:not(.active) { color: var(--text); }
-
-  /* TABLE */
-  .table-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 24px;
-  }
-  .table-header {
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .table-title { font-size: 15px; font-weight: 700; }
-  .table-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .table-controls { display: flex; gap: 10px; align-items: center; }
-  table { width: 100%; border-collapse: collapse; }
-  thead th {
-    padding: 12px 20px;
-    font-size: 11px; font-weight: 700;
-    color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    background: rgba(0,0,0,0.2);
-  }
-  tbody tr {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    transition: background 0.15s;
-  }
-  tbody tr:hover { background: rgba(255,255,255,0.03); }
-  tbody tr:last-child { border-bottom: none; }
-  td {
-    padding: 14px 20px;
-    font-size: 13px;
-  }
-  .mono { font-family: 'JetBrains Mono', monospace; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 20px;
-    font-size: 11px; font-weight: 700;
-  }
-  .badge-success { background: rgba(34,197,94,0.1); color: var(--success); }
-  .badge-warning { background: rgba(245,158,11,0.1); color: var(--warning); }
-  .badge-danger  { background: rgba(239,68,68,0.1); color: var(--danger); }
-  .badge-info    { background: rgba(59,130,246,0.1); color: var(--info); }
-  .badge-muted   { background: rgba(100,116,139,0.1); color: var(--muted); }
-
-  /* SECTION PANELS */
-  .panel-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
-    margin-bottom: 24px;
-  }
-  .panel {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-  }
-  .panel-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-
-  /* DETAIL DRAWER */
-  .drawer-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 200;
-    display: none;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .drawer-overlay.open { display: flex; opacity: 1; }
-  .drawer {
-    position: fixed; right: 0; top: 0; bottom: 0;
-    width: 480px;
-    background: var(--surface);
-    border-left: 1px solid var(--border);
-    z-index: 201;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-    overflow-y: auto;
-    padding: 28px;
-  }
-  .drawer.open { transform: translateX(0); }
-  .drawer-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
-  .drawer-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); margin-bottom: 20px; }
-  .detail-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  .detail-key { font-size: 12px; color: var(--muted); font-weight: 600; flex-shrink: 0; width: 140px; }
-  .detail-val { font-size: 13px; text-align: right; word-break: break-all; }
-
-  /* LOADER */
-  .loader {
-    display: inline-block; width: 18px; height: 18px;
-    border: 2px solid rgba(0,212,170,0.2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    vertical-align: middle; margin-left: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* TOAST */
-  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 10px; }
-  .toast {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 14px 18px;
-    font-size: 13px; font-weight: 600;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    animation: slideIn 0.3s ease;
-    display: flex; align-items: center; gap: 10px;
-    min-width: 260px;
-  }
-  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-  .toast.success { border-left: 3px solid var(--success); }
-  .toast.error   { border-left: 3px solid var(--danger); }
-  .toast.info    { border-left: 3px solid var(--accent); }
-
-  /* CHART BAR */
-  .chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 100px; margin-top: 12px; }
-  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .bar {
-    width: 100%; border-radius: 4px 4px 0 0;
-    background: linear-gradient(180deg, var(--accent), rgba(0,212,170,0.3));
-    transition: height 0.6s cubic-bezier(0.4,0,0.2,1);
-    min-height: 2px;
-  }
-  .bar-label { font-size: 9px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
-
-  /* EMPTY STATE */
-  .empty {
-    text-align: center; padding: 48px 24px;
-    color: var(--muted);
-  }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
-  .empty-text { font-size: 14px; }
-
-  /* FILTER BAR */
-  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-  .filter-input, .filter-select {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 14px;
-    font-size: 13px; color: var(--text);
-    font-family: 'Syne', sans-serif;
-    outline: none; transition: border-color 0.2s;
-  }
-  .filter-input:focus, .filter-select:focus { border-color: var(--accent); }
-  .filter-select option { background: var(--bg); }
-
-  /* PAGINATION */
-  .pagination { display: flex; align-items: center; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--border); }
-  .page-btn {
-    width: 32px; height: 32px;
-    border-radius: 6px; border: 1px solid var(--border);
-    background: transparent; color: var(--text);
-    cursor: pointer; font-family: 'Syne', sans-serif;
-    font-size: 13px; font-weight: 600;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
-  }
-  .page-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .page-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
-  .page-info { font-size: 12px; color: var(--muted); margin-left: auto; }
-
-  /* SECTION visibility */
-  .section { display: none; }
-  .section.active { display: block; }
-
-  /* REFUND FORM */
-  .refund-form { display: grid; gap: 12px; }
-  .form-group { display: flex; flex-direction: column; gap: 6px; }
-  .form-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .form-input {
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px;
-    font-size: 13px; color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    outline: none; transition: border-color 0.2s;
-  }
-  .form-input:focus { border-color: var(--accent); }
-
-  /* RESPONSIVE */
-  @media (max-width: 900px) {
-    .sidebar { display: none; }
-    .main { margin-left: 0; padding: 20px; }
-    .panel-grid { grid-template-columns: 1fr; }
-  }
-</style>
+<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
   const firebaseConfig = {
     apiKey: "AIzaSyAUyWmw_8mw2uNuusYu3TF9flpqPOWa71s",
     authDomain: "yoco-pos-dashbord.firebaseapp.com",
@@ -391,945 +21,1441 @@
     appId: "1:633313593449:web:a9ed814bc0b72de0043af8",
     measurementId: "G-8KM0SSYRKH"
   };
-
-  const app   = initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
-  const db    = getFirestore(app);
-
-  // Expose to window so the main (non-module) script can call these
+  const db = getFirestore(app);
   window._fb = {
-    analytics,
-    db,
-    logEvent,
-    collection,
-    addDoc,
-    getDocs,
-    query,
-    orderBy,
-    limit,
-    serverTimestamp,
-
-    // Log a named event to Analytics
-    track(eventName, params = {}) {
-      try { logEvent(analytics, eventName, params); } catch(e) { console.warn('Analytics:', e); }
-    },
-
-    // Save a connection attempt record to Firestore
-    async saveSession(status, keyPrefix) {
-      try {
-        await addDoc(collection(db, 'sessions'), {
-          status,
-          keyPrefix,          // only first 12 chars — never the full key
-          ts: serverTimestamp()
-        });
-      } catch(e) { console.warn('Firestore session save:', e); }
-    },
-
-    // Persist snapshot of summary stats after a successful connect
-    async saveSnapshot(stats) {
-      try {
-        await addDoc(collection(db, 'snapshots'), {
-          ...stats,
-          ts: serverTimestamp()
-        });
-      } catch(e) { console.warn('Firestore snapshot save:', e); }
-    },
-
-    // Retrieve last N snapshots for trend display
-    async getSnapshots(n = 10) {
-      try {
-        const q = query(collection(db, 'snapshots'), orderBy('ts', 'desc'), limit(n));
-        const snap = await getDocs(q);
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch(e) { console.warn('Firestore getSnapshots:', e); return []; }
-    }
+    track(n, p={}) { try { logEvent(analytics, n, p); } catch(e){} },
+    async saveSession(s, k) { try { await addDoc(collection(db,'sessions'),{status:s,keyPrefix:k,ts:serverTimestamp()}); } catch(e){} },
+    async saveSnapshot(stats) { try { await addDoc(collection(db,'snapshots'),{...stats,ts:serverTimestamp()}); } catch(e){} },
+    async getSnapshots(n=10) { try { const q=query(collection(db,'snapshots'),orderBy('ts','desc'),limit(n)); const s=await getDocs(q); return s.docs.map(d=>({id:d.id,...d.data()})); } catch(e){ return []; } }
   };
-
-  console.log('Firebase initialised ✓ — Analytics + Firestore ready');
+  window._fbReady = true;
 </script>
+
+<style>
+:root {
+  --bg: #080b0f;
+  --surface: #0e1117;
+  --card: #131820;
+  --card2: #171e28;
+  --border: #1c2433;
+  --border2: #243040;
+  --accent: #00c896;
+  --accent-dim: rgba(0,200,150,0.08);
+  --orange: #ff7043;
+  --orange-dim: rgba(255,112,67,0.08);
+  --purple: #7c6af7;
+  --purple-dim: rgba(124,106,247,0.08);
+  --blue: #3b9af8;
+  --blue-dim: rgba(59,154,248,0.08);
+  --yellow: #f5c842;
+  --yellow-dim: rgba(245,200,66,0.08);
+  --text: #dde4ef;
+  --muted: #556070;
+  --muted2: #3d4d5e;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --sidebar-w: 220px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:100;
+}
+.logo{padding:22px 20px 18px;border-bottom:1px solid var(--border)}
+.logo-mark{font-size:18px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+
+.nav-group{padding:14px 0 4px}
+.nav-group-label{padding:0 20px 6px;font-size:9px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:1.5px}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 20px;cursor:pointer;color:var(--muted);
+  font-size:13px;font-weight:600;transition:all 0.15s;
+  border-left:2px solid transparent;
+}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.025)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-dim)}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.nav-divider{height:1px;background:var(--border);margin:8px 16px}
+
+.sidebar-bottom{margin-top:auto;padding:14px 20px;border-top:1px solid var(--border)}
+.conn-status{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);flex-shrink:0}
+.status-dot.live{background:var(--success);box-shadow:0 0 6px var(--success);animation:pulse 2s infinite}
+.status-dot.error{background:var(--danger);box-shadow:0 0 6px var(--danger)}
+.status-dot.connecting{background:var(--warning);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.conn-label{font-size:11px;font-weight:700;color:var(--muted)}
+.fb-row{display:flex;align-items:center;gap:6px;margin-top:6px}
+.fb-dot{width:5px;height:5px;border-radius:50%;background:var(--muted2)}
+.fb-dot.ready{background:var(--accent)}
+.fb-label{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar-w);padding:28px 32px;min-height:100vh}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px}
+.page-title{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+.page-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.topbar-right{display:flex;gap:10px;align-items:center;flex-shrink:0}
+
+/* ── BUTTONS ── */
+.btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;transition:all 0.15s;white-space:nowrap}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#000}
+.btn-primary:hover:not(:disabled){background:#00e8ae;transform:translateY(-1px)}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text)}
+.btn-outline:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:6px 13px;font-size:11px}
+.btn-ghost{background:transparent;border:none;color:var(--muted);padding:6px 10px;font-size:12px}
+.btn-ghost:hover{color:var(--text)}
+
+/* ── SECTIONS ── */
+.section{display:none}
+.section.active{display:block}
+
+/* ── STAT CARDS ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.kpi{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:18px;position:relative;overflow:hidden;
+  transition:border-color 0.2s;
+}
+.kpi:hover{border-color:var(--border2)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.k-green::before{background:linear-gradient(90deg,var(--accent),transparent)}
+.kpi.k-orange::before{background:linear-gradient(90deg,var(--orange),transparent)}
+.kpi.k-purple::before{background:linear-gradient(90deg,var(--purple),transparent)}
+.kpi.k-blue::before{background:linear-gradient(90deg,var(--blue),transparent)}
+.kpi.k-yellow::before{background:linear-gradient(90deg,var(--yellow),transparent)}
+.kpi-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.kpi-value{font-size:24px;font-weight:800;letter-spacing:-0.5px;line-height:1}
+.kpi-value.mono{font-family:'JetBrains Mono',monospace;font-size:18px}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:4px}
+.kpi-trend-up{color:var(--success)}
+.kpi-trend-down{color:var(--danger)}
+
+/* ── GRID LAYOUTS ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+.grid-main-side{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:20px}
+@media(max-width:1100px){.grid-main-side{grid-template-columns:1fr}.grid-3{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.sidebar{display:none}.main{margin-left:0;padding:16px}.grid-2{grid-template-columns:1fr}}
+
+/* ── PANELS ── */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.panel-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.panel-title-text{display:flex;align-items:center;gap:7px}
+
+/* ── TABLE CARD ── */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.table-title{font-size:14px;font-weight:700}
+.table-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.table-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse}
+thead th{padding:10px 16px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;text-align:left;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.15);white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.1s}
+tbody tr:hover{background:rgba(255,255,255,0.025)}
+tbody tr:last-child{border-bottom:none}
+td{padding:12px 16px;font-size:12px;vertical-align:middle}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.badge-success{background:rgba(34,197,94,0.1);color:var(--success)}
+.badge-warning{background:rgba(245,158,11,0.1);color:var(--warning)}
+.badge-danger{background:rgba(239,68,68,0.1);color:var(--danger)}
+.badge-info{background:rgba(59,154,248,0.1);color:var(--blue)}
+.badge-purple{background:var(--purple-dim);color:var(--purple)}
+.badge-muted{background:rgba(85,96,112,0.15);color:var(--muted)}
+.badge-orange{background:var(--orange-dim);color:var(--orange)}
+
+/* ── FILTERS ── */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.filter-input,.filter-select{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);font-family:'Syne',sans-serif;outline:none;transition:border-color 0.2s}
+.filter-input:focus,.filter-select:focus{border-color:var(--accent)}
+.filter-select option{background:var(--bg)}
+
+/* ── CHARTS (CSS bar) ── */
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:80px;padding-top:4px}
+.bc-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.bc-bar{width:100%;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),rgba(0,200,150,0.2));transition:height 0.5s cubic-bezier(0.4,0,0.2,1);min-height:2px;cursor:pointer}
+.bc-bar.orange{background:linear-gradient(180deg,var(--orange),rgba(255,112,67,0.2))}
+.bc-bar:hover{filter:brightness(1.2)}
+.bc-label{font-size:8px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center}
+
+/* ── DONUT (CSS) ── */
+.donut-wrap{display:flex;align-items:center;gap:20px}
+.donut{width:80px;height:80px;border-radius:50%;flex-shrink:0;position:relative}
+.donut-legend{flex:1;display:flex;flex-direction:column;gap:6px}
+.donut-item{display:flex;align-items:center;gap:7px;font-size:11px}
+.donut-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.donut-name{color:var(--muted);flex:1}
+.donut-val{font-weight:700;font-family:'JetBrains Mono',monospace;font-size:10px}
+
+/* ── DETAIL ROWS ── */
+.detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.detail-row:last-child{border-bottom:none}
+.detail-key{font-size:11px;color:var(--muted);font-weight:600;flex-shrink:0;width:140px}
+.detail-val{font-size:12px;text-align:right;word-break:break-all;font-family:'JetBrains Mono',monospace}
+
+/* ── DRAWER ── */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:none;opacity:0;transition:opacity 0.25s}
+.drawer-overlay.open{display:flex;opacity:1}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:440px;background:var(--surface);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);overflow-y:auto;padding:24px}
+.drawer.open{transform:translateX(0)}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;top:18px;right:18px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px 16px;font-size:12px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,0.5);min-width:240px;max-width:340px}
+.toast.success{border-left:3px solid var(--success)}
+.toast.error{border-left:3px solid var(--danger)}
+.toast.info{border-left:3px solid var(--accent)}
+@keyframes toastIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast{animation:toastIn 0.25s ease}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:32px;margin-bottom:10px;opacity:0.3}
+.empty-text{font-size:13px}
+
+/* ── SETTINGS PANEL ── */
+.settings-section{max-width:560px}
+.settings-group{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.settings-group-title{padding:14px 18px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.1)}
+.settings-row{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.settings-row:last-child{border-bottom:none}
+.settings-label{font-size:13px;font-weight:600}
+.settings-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.settings-control{flex-shrink:0}
+.key-field{display:flex;gap:8px;align-items:center;flex:1;max-width:360px}
+.key-field input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);outline:none;transition:border-color 0.2s;min-width:0}
+.key-field input:focus{border-color:var(--accent)}
+
+/* ── PAGINATION ── */
+.pagination{display:flex;align-items:center;gap:6px;padding:14px 18px;border-top:1px solid var(--border)}
+.page-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.page-btn:hover{border-color:var(--accent);color:var(--accent)}
+.page-info{font-size:11px;color:var(--muted);margin-left:auto}
+
+/* ── HOUR HEATMAP ── */
+.heatmap{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:8px}
+.hm-cell{height:22px;border-radius:3px;background:var(--border);transition:background 0.3s;cursor:pointer;position:relative}
+.hm-cell:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#000;color:#fff;font-size:9px;padding:3px 7px;border-radius:4px;white-space:nowrap;z-index:10;pointer-events:none}
+.hm-label-row{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:3px}
+.hm-label{font-size:8px;color:var(--muted);text-align:center;font-family:'JetBrains Mono',monospace}
+
+/* ── METRIC COMPARISON ── */
+.metric-bar-row{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.mb-item{display:flex;flex-direction:column;gap:4px}
+.mb-header{display:flex;justify-content:space-between;font-size:11px}
+.mb-name{color:var(--muted);font-weight:600}
+.mb-val{font-weight:700;font-family:'JetBrains Mono',monospace}
+.mb-track{height:6px;background:var(--border2);border-radius:3px;overflow:hidden}
+.mb-fill{height:100%;border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1)}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px;width:fit-content;margin-bottom:18px}
+.tab{padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);transition:all 0.15s;border:none;background:transparent}
+.tab.active{background:var(--accent);color:#000}
+.tab:hover:not(.active){color:var(--text)}
+
+/* ── FORM ── */
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.form-input{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:12px;color:var(--text);font-family:'JetBrains Mono',monospace;outline:none;transition:border-color 0.2s}
+.form-input:focus{border-color:var(--accent)}
+.form-grid{display:grid;gap:12px}
+
+/* ── CONNECT ERROR ── */
+#connectErrorPanel{background:#150808;border:1px solid var(--danger);border-radius:10px;padding:16px;margin-bottom:20px;font-size:12px;line-height:1.6}
+</style>
 </head>
 <body>
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="logo">
-    <div class="logo-text">YOCO DASH</div>
-    <div class="logo-sub">API INTELLIGENCE LAYER</div>
+    <div class="logo-mark">YOCO DASH</div>
+    <div class="logo-sub">Merchant Intelligence</div>
   </div>
-  <nav>
-    <div class="nav-item active" onclick="showSection('overview')">
-      <span class="nav-icon">◈</span> Overview
+  <nav style="flex:1;overflow-y:auto">
+    <div class="nav-group">
+      <div class="nav-group-label">Business</div>
+      <div class="nav-item active" data-section="overview" onclick="showSection('overview')">
+        <span class="nav-icon">◈</span> Dashboard
+      </div>
+      <div class="nav-item" data-section="sales" onclick="showSection('sales')">
+        <span class="nav-icon">↗</span> Sales
+      </div>
+      <div class="nav-item" data-section="transactions" onclick="showSection('transactions')">
+        <span class="nav-icon">⬡</span> Transactions
+      </div>
     </div>
-    <div class="nav-item" onclick="showSection('payments')">
-      <span class="nav-icon">⬡</span> Payments
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <div class="nav-group-label">Finance</div>
+      <div class="nav-item" data-section="payouts" onclick="showSection('payouts')">
+        <span class="nav-icon">⬖</span> Payouts
+      </div>
+      <div class="nav-item" data-section="refunds" onclick="showSection('refunds')">
+        <span class="nav-icon">↩</span> Refunds
+      </div>
     </div>
-    <div class="nav-item" onclick="showSection('orders')">
-      <span class="nav-icon">◉</span> Orders
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <div class="nav-group-label">Operations</div>
+      <div class="nav-item" data-section="orders" onclick="showSection('orders')">
+        <span class="nav-icon">◉</span> Orders
+      </div>
+      <div class="nav-item" data-section="links" onclick="showSection('links')">
+        <span class="nav-icon">⊛</span> Payment Links
+      </div>
     </div>
-    <div class="nav-item" onclick="showSection('refunds')">
-      <span class="nav-icon">↩</span> Refunds
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <div class="nav-group-label">Developer</div>
+      <div class="nav-item" data-section="raw" onclick="showSection('raw')">
+        <span class="nav-icon">⌨</span> Raw Query
+      </div>
     </div>
-    <div class="nav-item" onclick="showSection('payouts')">
-      <span class="nav-icon">⬖</span> Payouts
-    </div>
-    <div class="nav-item" onclick="showSection('payment-links')">
-      <span class="nav-icon">⊛</span> Payment Links
-    </div>
-    <div class="nav-item" onclick="showSection('raw')">
-      <span class="nav-icon">⌨</span> Raw Query
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <div class="nav-group-label">Config</div>
+      <div class="nav-item" data-section="settings" onclick="showSection('settings')">
+        <span class="nav-icon">⚙</span> Settings
+      </div>
     </div>
   </nav>
-  <div class="sidebar-footer">
-    <div class="key-label">🔑 API KEY</div>
-    <input class="sidebar-key-input" id="apiKeyInput" type="password"
-      placeholder="yoco_live_…"
->
-    <div class="sidebar-key-actions">
-      <button class="btn btn-outline" onclick="toggleKeyVisibility()">Show</button>
-      <button class="btn btn-primary" onclick="connect()">Connect</button>
-    </div>
-    <div class="key-status">
+  <div class="sidebar-bottom">
+    <div class="conn-status">
       <div class="status-dot" id="statusDot"></div>
-      <span id="statusText">Disconnected</span>
+      <span class="conn-label" id="statusText">Not connected</span>
     </div>
-    <div class="key-status" style="margin-top:8px" id="fbStatus">
-      <div class="status-dot" id="fbDot"></div>
-      <span id="fbText" style="font-size:9px">Firebase loading…</span>
+    <div class="fb-row">
+      <div class="fb-dot" id="fbDot"></div>
+      <span class="fb-label" id="fbText">Firebase loading…</span>
     </div>
   </div>
 </aside>
 
-<!-- TOAST CONTAINER -->
+<!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- DETAIL DRAWER -->
+<!-- DRAWER -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()">
   <div class="drawer" id="drawer" onclick="event.stopPropagation()">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div>
-        <div class="drawer-title" id="drawerTitle">Details</div>
-        <div class="drawer-id" id="drawerId"></div>
+        <div style="font-size:16px;font-weight:800" id="drawerTitle">Details</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px" id="drawerId"></div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="closeDrawer()">✕ Close</button>
+      <button class="btn btn-outline btn-sm" onclick="closeDrawer()">✕</button>
     </div>
     <div id="drawerContent"></div>
   </div>
 </div>
 
-<!-- MAIN CONTENT -->
+<!-- MAIN -->
 <main class="main">
-
   <div class="topbar">
     <div>
-      <div class="page-title" id="pageTitle">Overview</div>
-      <div class="page-sub" id="pageSubtitle">Live business data from Yoco API</div>
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="page-sub" id="pageSub">Retail &amp; Hospitality Overview</div>
     </div>
     <div class="topbar-right">
+      <span id="lastRefreshed" style="font-size:11px;color:var(--muted)"></span>
       <button class="btn btn-outline btn-sm" onclick="refreshAll()">↺ Refresh</button>
     </div>
   </div>
 
-  <!-- ============ OVERVIEW ============ -->
+  <!-- ═══════════ OVERVIEW ═══════════ -->
   <div class="section active" id="section-overview">
-    <div class="stats-grid" id="overviewStats">
-      <div class="stat-card green">
-        <div class="stat-label">Total Payments</div>
-        <div class="stat-value" id="statTotalPayments">—</div>
-        <div class="stat-badge" id="statPaymentsBadge">awaiting data</div>
+
+    <div class="kpi-row" id="kpiRow">
+      <div class="kpi k-green">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value mono" id="kpiRevenue">—</div>
+        <div class="kpi-sub"><span id="kpiPaymentCount">—</span> payments</div>
       </div>
-      <div class="stat-card orange">
-        <div class="stat-label">Total Orders</div>
-        <div class="stat-value" id="statTotalOrders">—</div>
-        <div class="stat-badge" id="statOrdersBadge">awaiting data</div>
+      <div class="kpi k-orange">
+        <div class="kpi-label">Avg Transaction</div>
+        <div class="kpi-value mono" id="kpiAvgTx">—</div>
+        <div class="kpi-sub">per sale</div>
       </div>
-      <div class="stat-card purple">
-        <div class="stat-label">Total Refunds</div>
-        <div class="stat-value" id="statTotalRefunds">—</div>
-        <div class="stat-badge" id="statRefundsBadge">awaiting data</div>
+      <div class="kpi k-blue">
+        <div class="kpi-label">Successful Rate</div>
+        <div class="kpi-value" id="kpiSuccessRate">—</div>
+        <div class="kpi-sub">of all payments</div>
       </div>
-      <div class="stat-card blue">
-        <div class="stat-label">Total Payouts</div>
-        <div class="stat-value" id="statTotalPayouts">—</div>
-        <div class="stat-badge" id="statPayoutsBadge">awaiting data</div>
+      <div class="kpi k-purple">
+        <div class="kpi-label">Total Payouts</div>
+        <div class="kpi-value mono" id="kpiPayouts">—</div>
+        <div class="kpi-sub" id="kpiPayoutCount">— payouts</div>
+      </div>
+      <div class="kpi k-yellow">
+        <div class="kpi-label">Refund Rate</div>
+        <div class="kpi-value" id="kpiRefundRate">—</div>
+        <div class="kpi-sub" id="kpiRefundAmount">—</div>
       </div>
     </div>
 
-    <div class="panel-grid">
+    <div class="grid-main-side">
       <div class="panel">
-        <div class="panel-title">📊 Payment Volume (Last 7 days)</div>
-        <div class="chart-bars" id="chartBars">
-          <div style="color:var(--muted);font-size:12px;margin:auto">Connect to load chart</div>
+        <div class="panel-title">
+          <span class="panel-title-text">📊 Daily Revenue</span>
+          <div class="tabs" style="margin:0">
+            <button class="tab active" onclick="setChartMode('revenue',this)">Revenue</button>
+            <button class="tab" onclick="setChartMode('volume',this)">Volume</button>
+          </div>
+        </div>
+        <div class="bar-chart" id="dailyChart"><div style="color:var(--muted);font-size:12px;margin:auto">Connect to load</div></div>
+        <div class="hm-label-row" id="dailyLabels"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="panel" style="flex:1">
+          <div class="panel-title"><span class="panel-title-text">💳 Payment Methods</span></div>
+          <div id="methodBreakdown"><div style="color:var(--muted);font-size:12px">No data</div></div>
+        </div>
+        <div class="panel" style="flex:1">
+          <div class="panel-title"><span class="panel-title-text">🕐 Peak Hours</span></div>
+          <div class="heatmap" id="peakHours"></div>
+          <div class="hm-label-row" id="peakHourLabels"></div>
         </div>
       </div>
+    </div>
+
+    <div class="grid-2">
       <div class="panel">
-        <div class="panel-title">⚡ Recent Activity</div>
-        <div id="recentActivity" style="color:var(--muted);font-size:13px">Connect to see activity</div>
+        <div class="panel-title"><span class="panel-title-text">🏪 Retail vs Hospitality</span></div>
+        <div id="segmentBreakdown"><div style="color:var(--muted);font-size:12px">Connect to analyse</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="panel-title-text">⚡ Recent Transactions</span></div>
+        <div id="recentTx"><div style="color:var(--muted);font-size:12px">Connect to see activity</div></div>
       </div>
     </div>
 
     <div class="table-card">
       <div class="table-header">
-        <div>
-          <div class="table-title">Recent Payments</div>
-          <div class="table-sub">Latest 10 transactions</div>
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="showSection('payments')">View All →</button>
+        <div><div class="table-title">Today's Transactions</div><div class="table-sub" id="todayCount">—</div></div>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV('payments')">⬇ Export</button>
       </div>
-      <div id="overviewPaymentsTable"><div class="empty"><div class="empty-icon">◈</div><div class="empty-text">Connect your API key to load data</div></div></div>
+      <div id="todayTable"><div class="empty"><div class="empty-icon">◈</div><div class="empty-text">Connect to load data</div></div></div>
     </div>
   </div>
 
-  <!-- ============ PAYMENTS ============ -->
-  <div class="section" id="section-payments">
+  <!-- ═══════════ SALES ═══════════ -->
+  <div class="section" id="section-sales">
+    <div class="kpi-row">
+      <div class="kpi k-green">
+        <div class="kpi-label">Gross Revenue</div>
+        <div class="kpi-value mono" id="salesGross">—</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-label">Net (after refunds)</div>
+        <div class="kpi-value mono" id="salesNet">—</div>
+      </div>
+      <div class="kpi k-blue">
+        <div class="kpi-label">Card Sales</div>
+        <div class="kpi-value mono" id="salesCard">—</div>
+      </div>
+      <div class="kpi k-purple">
+        <div class="kpi-label">Other Methods</div>
+        <div class="kpi-value mono" id="salesOther">—</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title"><span class="panel-title-text">📈 Revenue by Day of Week</span></div>
+        <div class="bar-chart" id="dowChart"></div>
+        <div class="hm-label-row" id="dowLabels"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="panel-title-text">💰 Transaction Size Bands</span></div>
+        <div class="metric-bar-row" id="sizeBands"></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <div><div class="table-title">Sales Ledger</div><div class="table-sub" id="salesCount">All successful payments</div></div>
+        <div class="table-controls">
+          <input class="filter-input" id="salesSearch" placeholder="🔍 Search…" oninput="filterSales()">
+          <select class="filter-select" id="salesMethod" onchange="filterSales()">
+            <option value="">All Methods</option>
+            <option value="card">Card</option>
+            <option value="cash">Cash</option>
+            <option value="instant_eft">Instant EFT</option>
+            <option value="gift_voucher">Gift Voucher</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV('payments')">⬇ CSV</button>
+        </div>
+      </div>
+      <div id="salesTable"><div class="empty"><div class="empty-icon">↗</div><div class="empty-text">No data</div></div></div>
+      <div class="pagination" id="salesPagination" style="display:none">
+        <button class="page-btn" onclick="changePage('sales',-1)">‹</button>
+        <span id="salesPageInfo" class="page-info"></span>
+        <button class="page-btn" onclick="changePage('sales',1)">›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TRANSACTIONS ═══════════ -->
+  <div class="section" id="section-transactions">
     <div class="filter-bar">
-      <input class="filter-input" id="paymentSearch" placeholder="🔍 Search payments..." oninput="filterPayments()">
-      <select class="filter-select" id="paymentStatus" onchange="filterPayments()">
+      <input class="filter-input" id="txSearch" placeholder="🔍 ID, reference, amount…" oninput="filterTx()">
+      <select class="filter-select" id="txStatus" onchange="filterTx()">
         <option value="">All Statuses</option>
         <option value="successful">Successful</option>
         <option value="failed">Failed</option>
         <option value="pending">Pending</option>
         <option value="cancelled">Cancelled</option>
       </select>
-      <select class="filter-select" id="paymentMethod" onchange="filterPayments()">
+      <select class="filter-select" id="txMethod" onchange="filterTx()">
         <option value="">All Methods</option>
         <option value="card">Card</option>
         <option value="cash">Cash</option>
         <option value="instant_eft">Instant EFT</option>
       </select>
-      <button class="btn btn-outline btn-sm" onclick="exportCSV('payments')">⬇ Export CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV('payments')">⬇ Export</button>
     </div>
     <div class="table-card">
       <div class="table-header">
-        <div>
-          <div class="table-title">All Payments</div>
-          <div class="table-sub" id="paymentsCount">Connect to load</div>
-        </div>
+        <div><div class="table-title">All Transactions</div><div class="table-sub" id="txCount">Connect to load</div></div>
         <button class="btn btn-outline btn-sm" onclick="loadPayments()">↺ Reload</button>
       </div>
-      <div id="paymentsTable"><div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No data loaded</div></div></div>
-      <div class="pagination" id="paymentsPagination" style="display:none">
-        <button class="page-btn" onclick="changePage('payments',-1)">‹</button>
-        <span id="paymentsPageInfo" class="page-info"></span>
-        <button class="page-btn" onclick="changePage('payments',1)">›</button>
+      <div id="txTable"><div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No data</div></div></div>
+      <div class="pagination" id="txPagination" style="display:none">
+        <button class="page-btn" onclick="changePage('tx',-1)">‹</button>
+        <span id="txPageInfo" class="page-info"></span>
+        <button class="page-btn" onclick="changePage('tx',1)">›</button>
       </div>
     </div>
   </div>
 
-  <!-- ============ ORDERS ============ -->
+  <!-- ═══════════ PAYOUTS ═══════════ -->
+  <div class="section" id="section-payouts">
+    <div class="kpi-row">
+      <div class="kpi k-green">
+        <div class="kpi-label">Total Paid Out</div>
+        <div class="kpi-value mono" id="payoutTotal">—</div>
+      </div>
+      <div class="kpi k-blue">
+        <div class="kpi-label">Avg Payout</div>
+        <div class="kpi-value mono" id="payoutAvg">—</div>
+      </div>
+      <div class="kpi k-orange">
+        <div class="kpi-label">Total Payouts</div>
+        <div class="kpi-value" id="payoutCount">—</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <div><div class="table-title">Payout History</div><div class="table-sub" id="payoutsCountSub">Connect to load</div></div>
+        <button class="btn btn-outline btn-sm" onclick="loadPayouts()">↺ Reload</button>
+      </div>
+      <div id="payoutsTable"><div class="empty"><div class="empty-icon">⬖</div><div class="empty-text">No data</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ REFUNDS ═══════════ -->
+  <div class="section" id="section-refunds">
+    <div class="kpi-row">
+      <div class="kpi k-orange">
+        <div class="kpi-label">Total Refunded</div>
+        <div class="kpi-value mono" id="refundTotal">—</div>
+      </div>
+      <div class="kpi k-blue">
+        <div class="kpi-label">No. of Refunds</div>
+        <div class="kpi-value" id="refundCount">—</div>
+      </div>
+      <div class="kpi k-purple">
+        <div class="kpi-label">Avg Refund</div>
+        <div class="kpi-value mono" id="refundAvg">—</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title"><span class="panel-title-text">↩ Process a Refund</span></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="form-label">Payment ID</div>
+            <input class="form-input" id="refundPaymentId" placeholder="pay_xxxxxxxx">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Amount in cents (blank = full refund)</div>
+            <input class="form-input" id="refundAmount" type="number" placeholder="e.g. 5000 = R50.00">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Reason</div>
+            <input class="form-input" id="refundReason" placeholder="Customer request, quality issue…">
+          </div>
+          <button class="btn btn-danger" onclick="createRefund()">Process Refund</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="panel-title-text">📋 Refund Breakdown by Method</span></div>
+        <div id="refundMethodBreak"><div style="color:var(--muted);font-size:12px">Load refunds to see breakdown</div></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <div><div class="table-title">Refund History</div><div class="table-sub" id="refundsCountSub">Connect to load</div></div>
+        <button class="btn btn-outline btn-sm" onclick="loadRefunds()">↺ Reload</button>
+      </div>
+      <div id="refundsTable"><div class="empty"><div class="empty-icon">↩</div><div class="empty-text">No data</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ ORDERS ═══════════ -->
   <div class="section" id="section-orders">
     <div class="filter-bar">
-      <input class="filter-input" id="orderSearch" placeholder="🔍 Search orders..." oninput="filterOrders()">
+      <input class="filter-input" id="orderSearch" placeholder="🔍 Search orders…" oninput="filterOrders()">
       <select class="filter-select" id="orderStatus" onchange="filterOrders()">
         <option value="">All Statuses</option>
         <option value="open">Open</option>
         <option value="complete">Complete</option>
         <option value="cancelled">Cancelled</option>
       </select>
-      <button class="btn btn-outline btn-sm" onclick="exportCSV('orders')">⬇ Export CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV('orders')">⬇ Export</button>
     </div>
     <div class="table-card">
       <div class="table-header">
-        <div>
-          <div class="table-title">All Orders</div>
-          <div class="table-sub" id="ordersCount">Connect to load</div>
-        </div>
+        <div><div class="table-title">Orders</div><div class="table-sub" id="ordersCountSub">Connect to load</div></div>
         <button class="btn btn-outline btn-sm" onclick="loadOrders()">↺ Reload</button>
       </div>
-      <div id="ordersTable"><div class="empty"><div class="empty-icon">◉</div><div class="empty-text">No data loaded</div></div></div>
+      <div id="ordersTable"><div class="empty"><div class="empty-icon">◉</div><div class="empty-text">No data</div></div></div>
     </div>
   </div>
 
-  <!-- ============ REFUNDS ============ -->
-  <div class="section" id="section-refunds">
-    <div class="panel-grid">
-      <div class="panel">
-        <div class="panel-title">↩ Create Refund</div>
-        <div class="refund-form">
-          <div class="form-group">
-            <div class="form-label">Payment ID</div>
-            <input class="form-input" id="refundPaymentId" placeholder="pay_xxxxxxxx">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Amount (cents, leave blank for full refund)</div>
-            <input class="form-input" id="refundAmount" type="number" placeholder="e.g. 1000 = R10.00">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Reason</div>
-            <input class="form-input" id="refundReason" placeholder="Optional reason">
-          </div>
-          <button class="btn btn-danger" onclick="createRefund()" style="margin-top:4px">Create Refund</button>
-        </div>
+  <!-- ═══════════ PAYMENT LINKS ═══════════ -->
+  <div class="section" id="section-links">
+    <div class="panel" style="max-width:500px">
+      <div class="panel-title"><span class="panel-title-text">⊛ Fetch Payment Link</span></div>
+      <div style="display:flex;gap:8px">
+        <input class="filter-input" id="plinkId" placeholder="Payment link ID…" style="flex:1">
+        <button class="btn btn-primary" onclick="fetchPaymentLink()">Fetch</button>
       </div>
-      <div class="panel">
-        <div class="panel-title">📋 Refund Stats</div>
-        <div id="refundStats" style="color:var(--muted);font-size:13px">Load refunds to see stats</div>
-      </div>
-    </div>
-    <div class="table-card">
-      <div class="table-header">
-        <div>
-          <div class="table-title">All Refunds</div>
-          <div class="table-sub" id="refundsCount">Connect to load</div>
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="loadRefunds()">↺ Reload</button>
-      </div>
-      <div id="refundsTable"><div class="empty"><div class="empty-icon">↩</div><div class="empty-text">No data loaded</div></div></div>
+      <div id="plinkResult" style="margin-top:14px"></div>
     </div>
   </div>
 
-  <!-- ============ PAYOUTS ============ -->
-  <div class="section" id="section-payouts">
-    <div class="table-card">
-      <div class="table-header">
-        <div>
-          <div class="table-title">All Payouts</div>
-          <div class="table-sub" id="payoutsCount">Connect to load</div>
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="loadPayouts()">↺ Reload</button>
-      </div>
-      <div id="payoutsTable"><div class="empty"><div class="empty-icon">⬖</div><div class="empty-text">No data loaded</div></div></div>
-    </div>
-  </div>
-
-  <!-- ============ PAYMENT LINKS ============ -->
-  <div class="section" id="section-payment-links">
-    <div class="panel">
-      <div class="panel-title">⊛ Fetch Payment Link</div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input class="filter-input" id="plinkId" placeholder="Payment link ID..." style="flex:1;min-width:200px">
-        <button class="btn btn-primary" onclick="fetchPaymentLink()">Fetch →</button>
-      </div>
-      <div id="plinkResult" style="margin-top:16px"></div>
-    </div>
-  </div>
-
-  <!-- ============ RAW QUERY ============ -->
+  <!-- ═══════════ RAW QUERY ═══════════ -->
   <div class="section" id="section-raw">
     <div class="panel">
-      <div class="panel-title">⌨ Raw API Query</div>
+      <div class="panel-title"><span class="panel-title-text">⌨ Raw API Query</span></div>
       <div style="display:grid;gap:12px">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <select class="filter-select" id="rawMethod">
-            <option>GET</option>
-            <option>POST</option>
-          </select>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select class="filter-select" id="rawMethod"><option>GET</option><option>POST</option></select>
           <input class="filter-input" id="rawEndpoint" placeholder="/v1/payments" style="flex:1;min-width:200px" value="/v1/payments">
           <button class="btn btn-primary" onclick="rawQuery()">Execute →</button>
         </div>
         <div>
-          <div class="form-label" style="margin-bottom:6px">Request Body (JSON, for POST)</div>
-          <textarea class="form-input" id="rawBody" style="height:80px;resize:vertical;width:100%" placeholder='{"key":"value"}'></textarea>
+          <div class="form-label" style="margin-bottom:5px">Request Body (POST only)</div>
+          <textarea class="form-input" id="rawBody" style="height:70px;resize:vertical;width:100%" placeholder='{"key":"value"}'></textarea>
         </div>
         <div>
-          <div class="form-label" style="margin-bottom:6px">Response</div>
-          <pre id="rawResponse" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;overflow:auto;max-height:400px;color:var(--text)">— Execute a query to see response —</pre>
+          <div class="form-label" style="margin-bottom:5px">Response</div>
+          <pre id="rawResponse" style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:11px;overflow:auto;max-height:420px;color:var(--text);line-height:1.5">— execute a query —</pre>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ SETTINGS ═══════════ -->
+  <div class="section" id="section-settings">
+    <div class="settings-section">
+
+      <div class="settings-group">
+        <div class="settings-group-title">API Connection</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Yoco API Key</div>
+            <div class="settings-desc">Your live secret key — never stored, read fresh on every request</div>
+          </div>
+          <div class="key-field settings-control">
+            <input type="password" id="apiKeyInput" placeholder="yoco_live_…">
+            <button class="btn btn-outline btn-sm" onclick="toggleKeyVisibility()">Show</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Connection Status</div>
+            <div class="settings-desc">Test your key and load all data</div>
+          </div>
+          <div class="settings-control" style="display:flex;align-items:center;gap:10px">
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)">
+              <div class="status-dot" id="statusDot2"></div>
+              <span id="statusText2">Not connected</span>
+            </div>
+            <button class="btn btn-primary btn-sm" id="connectBtn" onclick="connect()">Connect</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Proxy</div>
+            <div class="settings-desc">CORS proxy used for direct browser calls</div>
+          </div>
+          <div class="settings-control">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">corsproxy.io</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Business Profile</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Business Name</div>
+            <div class="settings-desc">Shown in report headers</div>
+          </div>
+          <div class="settings-control">
+            <input class="form-input" id="bizName" placeholder="My Business" style="width:200px" oninput="saveBizSettings()">
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Business Type</div>
+            <div class="settings-desc">Tailors segment analysis on the dashboard</div>
+          </div>
+          <div class="settings-control">
+            <select class="filter-select" id="bizType" onchange="saveBizSettings()">
+              <option value="both">Retail &amp; Hospitality</option>
+              <option value="retail">Retail only</option>
+              <option value="hospitality">Hospitality only</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Firebase</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Analytics &amp; Firestore</div>
+            <div class="settings-desc">Session tracking and snapshot history</div>
+          </div>
+          <div class="settings-control" style="display:flex;align-items:center;gap:7px">
+            <div class="fb-dot" id="fbDot2"></div>
+            <span id="fbText2" style="font-size:11px;color:var(--muted)">Loading…</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Project</div>
+            <div class="settings-desc">Connected Firebase project</div>
+          </div>
+          <div class="settings-control">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">yoco-pos-dashbord</span>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
 </main>
 
 <script>
+// ═══════════════════════════════════════════════════
+//  CORE
+// ═══════════════════════════════════════════════════
 const BASE_URL = 'https://corsproxy.io/?url=https://api.yoco.com';
-// API key is NEVER stored in JS memory — always read fresh from the DOM input
 let connected = false;
 let allData = { payments: [], orders: [], refunds: [], payouts: [] };
-let pages = { payments: 1, orders: 1 };
-const PAGE_SIZE = 15;
+let chartMode = 'revenue';
+let pages = { tx: 1, sales: 1 };
+const PAGE_SIZE = 20;
 
-// ── UTILITIES ──────────────────────────────────────────
-// Always read fresh from the input — key is never held in a variable
+// Biz settings (localStorage — not the API key, just display prefs)
+let bizSettings = JSON.parse(localStorage.getItem('yoco_biz') || '{"name":"My Business","type":"both"}');
+
 function getKey() { return document.getElementById('apiKeyInput').value.trim(); }
-
-function fmt(cents) { return 'R\u00a0' + (cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function fmt(c) { return 'R\u00a0' + (c/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function fmtK(c) { return c >= 100000 ? 'R '+Math.round(c/100000)+'k' : fmt(c); }
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) +
-    ' ' + d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
 }
+function fmtTime(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
+}
+function pct(a,b) { return b ? Math.round(a/b*100)+'%' : '0%'; }
+function getAmt(p) { return p.amount?.value ?? p.amount ?? 0; }
+function getMethod(p) { return p.paymentMethodDetails?.type || p.method || 'card'; }
+function getStatus(p) { return (p.status||'').toLowerCase(); }
+
 function statusBadge(s) {
-  const map = {
-    successful: 'badge-success', succeeded: 'badge-success',
-    failed: 'badge-danger', cancelled: 'badge-danger',
-    pending: 'badge-warning', processing: 'badge-warning',
-    open: 'badge-info', complete: 'badge-success', completed: 'badge-success',
-    paid: 'badge-success', refunded: 'badge-info'
-  };
-  const cls = map[(s||'').toLowerCase()] || 'badge-muted';
-  return `<span class="badge ${cls}">${s || '—'}</span>`;
+  const m = {successful:'badge-success',succeeded:'badge-success',failed:'badge-danger',cancelled:'badge-danger',pending:'badge-warning',processing:'badge-warning',open:'badge-info',complete:'badge-success',completed:'badge-success',paid:'badge-success',refunded:'badge-orange'};
+  return `<span class="badge ${m[s?.toLowerCase()]||'badge-muted'}">${s||'—'}</span>`;
 }
-function toast(title, detail, type = 'info', duration = 7000) {
-  // Support old single-arg calls: toast('msg', 'error') -> remap
-  if (typeof detail !== 'string' || ['info','success','error','warning'].includes(detail)) {
-    duration = type && typeof type === 'number' ? type : 7000;
-    type = typeof detail === 'string' && ['info','success','error','warning'].includes(detail) ? detail : 'info';
-    detail = '';
-  }
-  const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
+function methodBadge(m) {
+  const c = {card:'badge-info',cash:'badge-success',instant_eft:'badge-purple',gift_voucher:'badge-orange'};
+  return `<span class="badge ${c[m?.toLowerCase()]||'badge-muted'}">${m||'—'}</span>`;
+}
+
+// ─ TOAST ─
+function toast(title, detail, type='info', dur=6000) {
+  if (['info','success','error','warning'].includes(detail)) { type=detail; detail=''; }
+  const icon = type==='success'?'✓':type==='error'?'✗':'ℹ';
   const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  const titleEl = document.createElement('span');
-  titleEl.style.cssText = 'font-weight:700';
-  titleEl.textContent = icon + '  ' + title;
-  t.appendChild(titleEl);
+  t.className = 'toast '+type;
+  const h = document.createElement('div');
+  h.style.fontWeight='700';
+  h.textContent = icon+'  '+title;
+  t.appendChild(h);
   if (detail) {
     const d = document.createElement('div');
-    d.style.cssText = 'font-size:11px;font-weight:400;margin-top:4px;opacity:0.85;line-height:1.4';
+    d.style.cssText='font-size:11px;font-weight:400;margin-top:3px;opacity:0.8';
     d.textContent = detail;
     t.appendChild(d);
   }
   document.getElementById('toastContainer').appendChild(t);
-  setTimeout(() => t.remove(), duration);
+  setTimeout(()=>t.remove(), dur);
 }
 
-// ── ERROR PARSER ─────────────────────────────────────
-function parseApiError(status, body, fetchError) {
-  if (fetchError) {
-    const msg = fetchError.message || '';
-    return {
-      title: 'Network Error',
-      detail: 'Could not reach the Yoco API via proxy. Check your internet connection and try again. (' + msg + ')',
-      hint: ''
-    };
-  }
-  const messages = {
-    400: "Bad Request — malformed request or missing required fields.",
-    401: "Unauthorised — your API key is invalid or incorrect. Double-check it in the Yoco Developer Portal.",
-    403: "Forbidden — this key does not have permission for this endpoint.",
-    404: "Not Found — the resource does not exist.",
-    422: "Unprocessable — request body contained invalid values.",
-    429: "Rate Limited — too many requests. Wait a moment and try again.",
-    500: "Yoco Server Error — issue on Yoco's side. Try again shortly.",
-    502: "Bad Gateway — Yoco API returned an unexpected response.",
-    503: "Service Unavailable — Yoco API is temporarily down."
-  };
-  const bodyMsg = body?.message || body?.error?.message || body?.error || body?.detail || '';
-  const httpMsg = messages[status] || ('HTTP ' + status);
-  return {
-    title: 'Error ' + status,
-    detail: httpMsg + (bodyMsg ? ' — ' + bodyMsg : ''),
-    hint: status === 401 ? 'Live keys start with yoco_live_' : ''
-  };
-}
-
-
-// ── NAV ────────────────────────────────────────────────
-const sectionNames = {
-  overview: 'Overview', payments: 'Payments',
-  orders: 'Orders', refunds: 'Refunds',
-  payouts: 'Payouts', 'payment-links': 'Payment Links', raw: 'Raw Query'
+// ─ NAV ─
+const sections = {
+  overview:'Dashboard', sales:'Sales', transactions:'Transactions',
+  payouts:'Payouts', refunds:'Refunds', orders:'Orders',
+  links:'Payment Links', raw:'Raw Query', settings:'Settings'
+};
+const subs = {
+  overview:'Retail & Hospitality Overview', sales:'Revenue & Sales Analysis',
+  transactions:'All Payment Transactions', payouts:'Payout History',
+  refunds:'Refund Management', orders:'Order Management',
+  links:'Payment Links', raw:'Direct API Access', settings:'Configuration'
 };
 function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('section-' + id).classList.add('active');
-  document.querySelectorAll('.nav-item')[Object.keys(sectionNames).indexOf(id)]?.classList.add('active');
-  document.getElementById('pageTitle').textContent = sectionNames[id];
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+  document.querySelector(`[data-section="${id}"]`)?.classList.add('active');
+  document.getElementById('pageTitle').textContent = sections[id]||id;
+  document.getElementById('pageSub').textContent = subs[id]||'';
   if (connected) {
-    if (id === 'payments' && allData.payments.length === 0) loadPayments();
-    if (id === 'orders'   && allData.orders.length === 0)   loadOrders();
-    if (id === 'refunds'  && allData.refunds.length === 0)  loadRefunds();
-    if (id === 'payouts'  && allData.payouts.length === 0)  loadPayouts();
+    if (id==='transactions' && !allData.payments.length) loadPayments();
+    if (id==='orders' && !allData.orders.length) loadOrders();
+    if (id==='refunds' && !allData.refunds.length) loadRefunds();
+    if (id==='payouts' && !allData.payouts.length) loadPayouts();
   }
 }
-document.querySelectorAll('.nav-item').forEach((n, i) => {
-  n.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
-    n.classList.add('active');
-  });
-});
 
-// ── TOGGLE KEY ─────────────────────────────────────────
+// ─ KEY TOGGLE ─
 function toggleKeyVisibility() {
-  const inp = document.getElementById('apiKeyInput');
-  const btn = event.target;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-  btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
+  const i = document.getElementById('apiKeyInput');
+  i.type = i.type==='password'?'text':'password';
+  event.target.textContent = i.type==='password'?'Show':'Hide';
 }
 
-// ── CONNECT ────────────────────────────────────────────
-async function connect() {
-  const key = getKey();
-  if (!key) { toast('No API key entered', 'Enter your Yoco live key in the sidebar field above', 'error'); return; }
+// ─ BIZ SETTINGS ─
+function saveBizSettings() {
+  bizSettings.name = document.getElementById('bizName')?.value || '';
+  bizSettings.type = document.getElementById('bizType')?.value || 'both';
+  localStorage.setItem('yoco_biz', JSON.stringify(bizSettings));
+}
+function loadBizSettings() {
+  if (document.getElementById('bizName')) document.getElementById('bizName').value = bizSettings.name||'';
+  if (document.getElementById('bizType')) document.getElementById('bizType').value = bizSettings.type||'both';
+}
 
-  // Visual feedback on button
-  const btn = document.querySelector('.sidebar-key-actions .btn-primary');
-  const orig = btn ? btn.textContent : '';
-  if (btn) { btn.textContent = '…'; btn.disabled = true; }
-
-  setStatus('connecting');
-  try {
-    // Probe auth with a minimal request before loading everything
-    await yocoFetch('/v1/payments?count=1');
-    connected = true;
-    setStatus('live');
-    if (btn) { btn.textContent = '✓ Live'; btn.disabled = false; }
-    await Promise.all([loadPayments(true), loadOrders(true), loadRefunds(true), loadPayouts(true)]);
-    toast('Connected', 'Live data loaded from Yoco API', 'success');
-    renderOverview();
-    // Firebase: track successful connect + save snapshot
-    if (window._fb) {
-      window._fb.track('yoco_connect_success', { key_prefix: getKey().substring(0,12) });
-      window._fb.saveSession('success', getKey().substring(0,12));
-      window._fb.saveSnapshot({
-        payments: allData.payments.length,
-        orders:   allData.orders.length,
-        refunds:  allData.refunds.length,
-        payouts:  allData.payouts.length,
-        totalPaymentValue: allData.payments.reduce((s,p) => s + (p.amount?.value || p.amount || 0), 0)
-      });
-    }
-  } catch(e) {
-    connected = false;
-    setStatus('error');
-    if (btn) { btn.textContent = orig; btn.disabled = false; }
-    // e.uiError is set by yocoFetch with the parsed detail
-    const err = e.uiError || { title: 'Connection Failed', detail: e.message, hint: '' };
-    const detail = [err.detail, err.hint].filter(Boolean).join(' — ');
-    toast(err.title, detail, 'error', 12000);
-    showConnectError(err);
-    if (window._fb) {
-      window._fb.track('yoco_connect_error', { error: err.title });
-      window._fb.saveSession('error', getKey().substring(0,12));
-    }
+// ═══════════════════════════════════════════════════
+//  API
+// ═══════════════════════════════════════════════════
+function parseApiError(status, body, fetchError) {
+  if (fetchError) {
+    return { title:'Network Error', detail:'Could not reach the Yoco API via proxy. Check your internet connection. ('+( fetchError.message||'')+')', hint:'' };
   }
+  const messages = {
+    400:"Bad Request — malformed request or missing required fields.",
+    401:"Unauthorised — your API key is invalid or incorrect. Double-check it in the Yoco Developer Portal.",
+    403:"Forbidden — this key does not have permission for this endpoint.",
+    404:"Not Found — the resource does not exist.",
+    422:"Unprocessable — request body contained invalid values.",
+    429:"Rate Limited — too many requests. Wait a moment and try again.",
+    500:"Yoco Server Error — issue on Yoco's side. Try again shortly.",
+    502:"Bad Gateway — Yoco API returned an unexpected response.",
+    503:"Service Unavailable — Yoco API is temporarily down."
+  };
+  const bodyMsg = body?.message||body?.error?.message||body?.error||body?.detail||'';
+  return {
+    title: 'Error '+status,
+    detail: (messages[status]||('HTTP '+status)) + (bodyMsg?' — '+bodyMsg:''),
+    hint: status===401?'Live keys start with yoco_live_':''
+  };
 }
 
+async function yocoFetch(path, method='GET', body=null) {
+  const key = getKey();
+  if (!key) throw Object.assign(new Error('No key'), {uiError:{title:'No API Key',detail:'Enter your Yoco API key in Settings.',hint:''}});
+  const headers = {'Authorization':'Bearer '+key};
+  if (body) headers['Content-Type'] = 'application/json';
+  let res, rb;
+  try {
+    res = await fetch(BASE_URL+path, {method, headers, body:body?JSON.stringify(body):undefined});
+  } catch(fe) {
+    throw Object.assign(fe, {uiError:parseApiError(null,null,fe)});
+  }
+  try { rb = await res.json(); } catch(_) { rb={}; }
+  if (!res.ok) {
+    const e = new Error('API error'); e.uiError=parseApiError(res.status,rb,null); e.status=res.status; e.body=rb; throw e;
+  }
+  return rb;
+}
+
+// ═══════════════════════════════════════════════════
+//  CONNECT
+// ═══════════════════════════════════════════════════
 function setStatus(s) {
-  const dot = document.getElementById('statusDot');
-  const txt = document.getElementById('statusText');
-  const map = { connecting: ['', 'Connecting…'], live: ['live', 'Live'], error: ['error', 'Error'], disconnected: ['', 'Disconnected'] };
-  const [cls, label] = map[s] || ['', s];
-  dot.className = 'status-dot' + (cls ? ' ' + cls : '');
-  txt.textContent = label;
-  if (s === 'live') clearConnectError();
+  const states = {connecting:['connecting','Connecting…'],live:['live','Connected'],error:['error','Error'],disconnected:['','Not connected']};
+  const [cls,label] = states[s]||['',''];
+  ['statusDot','statusDot2'].forEach(id=>{ const el=document.getElementById(id); if(el){el.className='status-dot'+(cls?' '+cls:'');} });
+  ['statusText','statusText2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=label; });
+  if (s==='live') { const p=document.getElementById('connectErrorPanel'); if(p)p.remove(); }
 }
 
 function showConnectError(err) {
-  let panel = document.getElementById('connectErrorPanel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'connectErrorPanel';
-    panel.style.cssText = 'background:#1a0a0a;border:1px solid var(--danger);border-radius:10px;padding:16px;margin:16px 0;font-size:12px;line-height:1.6';
-    const firstSection = document.querySelector('.section');
-    firstSection.parentNode.insertBefore(panel, firstSection);
+  let p = document.getElementById('connectErrorPanel');
+  if (!p) {
+    p = document.createElement('div'); p.id='connectErrorPanel';
+    document.querySelector('.section.active')?.prepend(p);
   }
-  panel.innerHTML = '';
-
-  const titleEl = document.createElement('div');
-  titleEl.style.cssText = 'color:var(--danger);font-weight:700;font-size:13px;margin-bottom:8px';
-  titleEl.textContent = '✗ ' + err.title;
-  panel.appendChild(titleEl);
-
-  if (err.detail) {
-    const detail = document.createElement('div');
-    detail.style.cssText = 'color:var(--text);margin-bottom:6px';
-    detail.textContent = err.detail;
-    panel.appendChild(detail);
-  }
-  if (err.hint) {
-    const hint = document.createElement('div');
-    hint.style.cssText = 'color:var(--warning);font-style:italic';
-    hint.textContent = '💡 ' + err.hint;
-    panel.appendChild(hint);
-  }
+  p.innerHTML='';
+  const t=document.createElement('div'); t.style.cssText='color:var(--danger);font-weight:700;font-size:13px;margin-bottom:6px'; t.textContent='✗ '+err.title; p.appendChild(t);
+  if(err.detail){const d=document.createElement('div');d.style.cssText='color:var(--text);margin-bottom:4px';d.textContent=err.detail;p.appendChild(d);}
+  if(err.hint){const h=document.createElement('div');h.style.cssText='color:var(--warning);font-style:italic';h.textContent='💡 '+err.hint;p.appendChild(h);}
 }
 
-function clearConnectError() {
-  const panel = document.getElementById('connectErrorPanel');
-  if (panel) panel.remove();
-}
-
-// ── API CALL ───────────────────────────────────────────
-// Key is read fresh from DOM on every call — never stored
-async function yocoFetch(path, method = 'GET', body = null) {
+async function connect() {
   const key = getKey();
-  if (!key) throw Object.assign(new Error('No API key entered'), { uiError: { title: 'No API Key', detail: 'Enter your Yoco API key in the sidebar and click Connect.', hint: '' } });
-
-  const headers = { 'Authorization': 'Bearer ' + key };
-  // Only set Content-Type on requests with a body — avoids CORS preflight on GET
-  if (body) headers['Content-Type'] = 'application/json';
-
-  let res, responseBody;
+  if (!key) { toast('No API key', 'Enter your key in Settings first', 'error'); showSection('settings'); return; }
+  const btn = document.getElementById('connectBtn');
+  if (btn) { btn.textContent='…'; btn.disabled=true; }
+  setStatus('connecting');
   try {
-    res = await fetch(BASE_URL + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  } catch (fetchErr) {
-    const err = parseApiError(null, null, fetchErr);
-    throw Object.assign(fetchErr, { uiError: err });
-  }
-
-  // Try to parse JSON — Yoco always returns JSON, but guard anyway
-  try { responseBody = await res.json(); } catch (_) { responseBody = {}; }
-
-  if (!res.ok) {
-    const err = parseApiError(res.status, responseBody, null);
-    const e = new Error(err.title);
-    e.uiError = err;
-    e.status = res.status;
-    e.body = responseBody;
-    throw e;
-  }
-  return responseBody;
-}
-
-// ── LOAD PAYMENTS ──────────────────────────────────────
-async function loadPayments(silent = false) {
-  try {
-    const data = await yocoFetch('/v1/payments?count=100');
-    allData.payments = data.payments || data.data || (Array.isArray(data) ? data : []);
-    renderPaymentsTable();
-    document.getElementById('statTotalPayments').textContent = allData.payments.length;
-    document.getElementById('statPaymentsBadge').textContent = 'live data';
-    return data;
+    await yocoFetch('/v1/payments?count=1');
+    connected = true;
+    setStatus('live');
+    if (btn) { btn.textContent='✓ Connected'; btn.disabled=false; }
+    document.getElementById('lastRefreshed').textContent = 'Updated '+new Date().toLocaleTimeString('en-ZA');
+    await Promise.all([loadPayments(true), loadOrders(true), loadRefunds(true), loadPayouts(true)]);
+    renderOverview();
+    toast('Connected', 'Live data loaded from Yoco', 'success');
+    if (window._fb) {
+      window._fb.track('yoco_connect_success',{key_prefix:key.substring(0,12)});
+      window._fb.saveSession('success',key.substring(0,12));
+      window._fb.saveSnapshot({payments:allData.payments.length,orders:allData.orders.length,refunds:allData.refunds.length,payouts:allData.payouts.length,totalPaymentValue:allData.payments.reduce((s,p)=>s+getAmt(p),0)});
+    }
   } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
+    connected=false; setStatus('error');
+    if (btn) { btn.textContent='Connect'; btn.disabled=false; }
+    const err=e.uiError||{title:'Connection Failed',detail:e.message,hint:''};
+    toast(err.title,[err.detail,err.hint].filter(Boolean).join(' — '),'error',10000);
+    showConnectError(err);
+    if(window._fb){window._fb.track('yoco_connect_error',{error:err.title});window._fb.saveSession('error',getKey().substring(0,12));}
+  }
+}
+
+async function refreshAll() {
+  if (!connected) { toast('Not connected','Go to Settings to connect your API key','error'); return; }
+  await Promise.all([loadPayments(true),loadOrders(true),loadRefunds(true),loadPayouts(true)]);
+  renderOverview();
+  renderSalesSection();
+  document.getElementById('lastRefreshed').textContent='Updated '+new Date().toLocaleTimeString('en-ZA');
+  toast('Refreshed','Data reloaded','success',3000);
+}
+
+// ═══════════════════════════════════════════════════
+//  DATA LOADERS
+// ═══════════════════════════════════════════════════
+async function loadPayments(silent=false) {
+  try {
+    const d = await yocoFetch('/v1/payments?count=200');
+    allData.payments = d.payments||d.data||(Array.isArray(d)?d:[]);
+    renderTxTable(); renderSalesTable();
+  } catch(e) {
+    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
     throw e;
   }
 }
-
-function renderPaymentsTable(data) {
-  const rows = data || allData.payments;
-  document.getElementById('paymentsCount').textContent = rows.length + ' payments';
-  if (!rows.length) {
-    document.getElementById('paymentsTable').innerHTML = '<div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No payments found</div></div>';
-    return;
-  }
-  const page = pages.payments;
-  const slice = rows.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
-  document.getElementById('paymentsTable').innerHTML = `
-    <table>
-      <thead><tr>
-        <th>ID</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Reference</th><th></th>
-      </tr></thead>
-      <tbody>${slice.map(p => `
-        <tr>
-          <td class="mono" style="color:var(--muted);font-size:11px">${(p.id||'').substring(0,20)}…</td>
-          <td style="font-weight:700;color:var(--accent)">${fmt(p.amount?.value || p.amount || 0)}</td>
-          <td>${p.paymentMethodDetails?.type || p.method || '—'}</td>
-          <td>${statusBadge(p.status)}</td>
-          <td style="color:var(--muted);font-size:12px">${fmtDate(p.created_at || p.createdAt)}</td>
-          <td class="mono" style="font-size:11px;color:var(--muted)">${p.externalReference || p.metadata?.reference || '—'}</td>
-          <td><button class="btn btn-outline btn-sm" onclick='openDrawer(${JSON.stringify(p)}, "Payment")'>Details</button></td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
-  if (totalPages > 1) {
-    document.getElementById('paymentsPagination').style.display = 'flex';
-    document.getElementById('paymentsPageInfo').textContent = `Page ${page} of ${totalPages}`;
-  }
-}
-
-function filterPayments() {
-  const q = document.getElementById('paymentSearch').value.toLowerCase();
-  const st = document.getElementById('paymentStatus').value.toLowerCase();
-  const mt = document.getElementById('paymentMethod').value.toLowerCase();
-  const filtered = allData.payments.filter(p => {
-    const matchQ = !q || JSON.stringify(p).toLowerCase().includes(q);
-    const matchS = !st || (p.status||'').toLowerCase() === st;
-    const matchM = !mt || (p.paymentMethodDetails?.type || p.method || '').toLowerCase().includes(mt);
-    return matchQ && matchS && matchM;
-  });
-  pages.payments = 1;
-  renderPaymentsTable(filtered);
-}
-
-// ── LOAD ORDERS ────────────────────────────────────────
-async function loadOrders(silent = false) {
+async function loadOrders(silent=false) {
   try {
-    const data = await yocoFetch('/v1/orders?count=100');
-    allData.orders = data.orders || data.data || (Array.isArray(data) ? data : []);
+    const d = await yocoFetch('/v1/orders?count=200');
+    allData.orders = d.orders||d.data||(Array.isArray(d)?d:[]);
     renderOrdersTable();
-    document.getElementById('statTotalOrders').textContent = allData.orders.length;
-    document.getElementById('statOrdersBadge').textContent = 'live data';
-    return data;
   } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
+    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
+    throw e;
+  }
+}
+async function loadRefunds(silent=false) {
+  try {
+    const d = await yocoFetch('/v1/refunds?count=200');
+    allData.refunds = d.refunds||d.data||(Array.isArray(d)?d:[]);
+    renderRefundsTable(); renderRefundKpis();
+  } catch(e) {
+    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
+    throw e;
+  }
+}
+async function loadPayouts(silent=false) {
+  try {
+    const d = await yocoFetch('/v1/payouts?count=200');
+    allData.payouts = d.payouts||d.data||(Array.isArray(d)?d:[]);
+    renderPayoutsTable(); renderPayoutKpis();
+  } catch(e) {
+    if (!silent){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
     throw e;
   }
 }
 
-function renderOrdersTable(data) {
-  const rows = data || allData.orders;
-  document.getElementById('ordersCount').textContent = rows.length + ' orders';
-  if (!rows.length) {
-    document.getElementById('ordersTable').innerHTML = '<div class="empty"><div class="empty-icon">◉</div><div class="empty-text">No orders found</div></div>';
-    return;
-  }
-  document.getElementById('ordersTable').innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Order ID</th><th>Human Ref</th><th>Amount</th><th>Status</th><th>Created</th><th></th>
-      </tr></thead>
-      <tbody>${rows.map(o => `
-        <tr>
-          <td class="mono" style="font-size:11px;color:var(--muted)">${(o.id||'').substring(0,20)}…</td>
-          <td>${o.humanReference || o.human_reference || '—'}</td>
-          <td style="font-weight:700;color:var(--accent)">${fmt(o.totalAmount?.value || o.amount?.value || o.amount || 0)}</td>
-          <td>${statusBadge(o.status)}</td>
-          <td style="color:var(--muted);font-size:12px">${fmtDate(o.created_at || o.createdAt)}</td>
-          <td><button class="btn btn-outline btn-sm" onclick='openDrawer(${JSON.stringify(o)}, "Order")'>Details</button></td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
+// ═══════════════════════════════════════════════════
+//  OVERVIEW RENDERING
+// ═══════════════════════════════════════════════════
+function renderOverview() {
+  const pays = allData.payments;
+  const successful = pays.filter(p=>['successful','succeeded'].includes(getStatus(p)));
+  const totalRev = successful.reduce((s,p)=>s+getAmt(p),0);
+  const avgTx = successful.length ? Math.round(totalRev/successful.length) : 0;
+  const successRate = pays.length ? Math.round(successful.length/pays.length*100) : 0;
+  const totalRefunded = allData.refunds.reduce((s,r)=>s+getAmt(r),0);
+  const refundRate = totalRev ? (totalRefunded/totalRev*100).toFixed(1)+'%' : '0%';
+  const totalPayout = allData.payouts.reduce((s,p)=>s+getAmt(p),0);
+
+  document.getElementById('kpiRevenue').textContent = fmt(totalRev);
+  document.getElementById('kpiPaymentCount').textContent = successful.length;
+  document.getElementById('kpiAvgTx').textContent = fmt(avgTx);
+  document.getElementById('kpiSuccessRate').textContent = successRate+'%';
+  document.getElementById('kpiPayouts').textContent = fmt(totalPayout);
+  document.getElementById('kpiPayoutCount').textContent = allData.payouts.length+' payouts';
+  document.getElementById('kpiRefundRate').textContent = refundRate;
+  document.getElementById('kpiRefundAmount').textContent = fmt(totalRefunded)+' refunded';
+
+  renderDailyChart();
+  renderMethodBreakdown();
+  renderPeakHours();
+  renderSegmentBreakdown();
+  renderRecentTx();
+  renderTodayTable();
+  renderSalesSection();
 }
 
-function filterOrders() {
-  const q = document.getElementById('orderSearch').value.toLowerCase();
-  const st = document.getElementById('orderStatus').value.toLowerCase();
-  const filtered = allData.orders.filter(o => {
-    const matchQ = !q || JSON.stringify(o).toLowerCase().includes(q);
-    const matchS = !st || (o.status||'').toLowerCase() === st;
-    return matchQ && matchS;
+function setChartMode(mode, btn) {
+  chartMode = mode;
+  document.querySelectorAll('.panel-title .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderDailyChart();
+}
+
+function renderDailyChart() {
+  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
+  // Group by date, last 14 days
+  const byDate = {};
+  pays.forEach(p=>{
+    const dt = (p.created_at||p.createdAt||'').substring(0,10);
+    if (!dt) return;
+    if (!byDate[dt]) byDate[dt] = {rev:0,vol:0};
+    byDate[dt].rev += getAmt(p);
+    byDate[dt].vol++;
   });
-  renderOrdersTable(filtered);
+  const dates = Object.keys(byDate).sort().slice(-14);
+  const vals = dates.map(d=>chartMode==='revenue'?byDate[d].rev:byDate[d].vol);
+  const maxV = Math.max(...vals,1);
+  const chart = document.getElementById('dailyChart');
+  const labels = document.getElementById('dailyLabels');
+  chart.innerHTML = dates.map((d,i)=>{
+    const h = Math.max(3,Math.round(vals[i]/maxV*76));
+    const tip = d+': '+(chartMode==='revenue'?fmt(vals[i]):vals[i]+' txn');
+    return `<div class="bc-bar-wrap"><div class="bc-bar" style="height:${h}px" title="${tip}" data-tip="${tip}"></div></div>`;
+  }).join('');
+  labels.innerHTML = dates.map(d=>`<div class="bc-label">${new Date(d+'T12:00:00').toLocaleDateString('en-ZA',{day:'2-digit',month:'short'})}</div>`).join('');
 }
 
-// ── LOAD REFUNDS ───────────────────────────────────────
-async function loadRefunds(silent = false) {
-  try {
-    const data = await yocoFetch('/v1/refunds?count=100');
-    allData.refunds = data.refunds || data.data || (Array.isArray(data) ? data : []);
-    renderRefundsTable();
-    document.getElementById('statTotalRefunds').textContent = allData.refunds.length;
-    document.getElementById('statRefundsBadge').textContent = 'live data';
-    renderRefundStats();
-    return data;
-  } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
-    throw e;
-  }
+function renderMethodBreakdown() {
+  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
+  const byMethod = {};
+  pays.forEach(p=>{
+    const m = getMethod(p); byMethod[m]=(byMethod[m]||0)+getAmt(p);
+  });
+  const total = Object.values(byMethod).reduce((a,b)=>a+b,0)||1;
+  const colors = {card:'var(--blue)',cash:'var(--accent)',instant_eft:'var(--purple)',gift_voucher:'var(--orange)'};
+  const entries = Object.entries(byMethod).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('methodBreakdown').innerHTML = `<div class="metric-bar-row">${entries.map(([m,v])=>`
+    <div class="mb-item">
+      <div class="mb-header"><span class="mb-name">${m}</span><span class="mb-val">${fmt(v)}</span></div>
+      <div class="mb-track"><div class="mb-fill" style="width:${Math.round(v/total*100)}%;background:${colors[m]||'var(--muted)'}"></div></div>
+    </div>`).join('')||'<div style="color:var(--muted);font-size:12px">No data</div>'}
+  </div>`;
 }
 
+function renderPeakHours() {
+  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
+  const byHour = new Array(24).fill(0);
+  pays.forEach(p=>{
+    const dt = p.created_at||p.createdAt;
+    if (dt) byHour[new Date(dt).getHours()]++;
+  });
+  // Show 12 slots: group by 2-hour blocks
+  const blocks = Array.from({length:12},(_,i)=>byHour[i*2]+(byHour[i*2+1]||0));
+  const maxB = Math.max(...blocks,1);
+  const heat = document.getElementById('peakHours');
+  const hlabels = document.getElementById('peakHourLabels');
+  heat.innerHTML = blocks.map((v,i)=>{
+    const int = Math.round(v/maxB*100);
+    const bg = `rgba(0,200,150,${0.1+int/100*0.9})`;
+    const h = i*2;
+    const tip = `${h.toString().padStart(2,'0')}:00–${(h+2).toString().padStart(2,'0')}:00 (${v} txn)`;
+    return `<div class="hm-cell" style="background:${bg}" data-tip="${tip}" title="${tip}"></div>`;
+  }).join('');
+  hlabels.innerHTML = Array.from({length:12},(_,i)=>`<div class="hm-label">${(i*2).toString().padStart(2,'0')}h</div>`).join('');
+}
+
+function renderSegmentBreakdown() {
+  // Infer segment from amount: hospitality = typically smaller avg tickets (coffee, drinks)
+  // Retail = larger, less frequent. This is heuristic-based since Yoco doesn't tag by type.
+  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
+  const hosp = pays.filter(p=>getAmt(p)<=15000); // under R150
+  const retail = pays.filter(p=>getAmt(p)>15000);
+  const hospRev = hosp.reduce((s,p)=>s+getAmt(p),0);
+  const retailRev = retail.reduce((s,p)=>s+getAmt(p),0);
+  const total = hospRev+retailRev||1;
+
+  document.getElementById('segmentBreakdown').innerHTML = `
+    <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Estimated from transaction size — under R150 = hospitality, over = retail</div>
+    <div class="metric-bar-row">
+      <div class="mb-item">
+        <div class="mb-header"><span class="mb-name">🍽 Hospitality (≤R150)</span><span class="mb-val">${fmt(hospRev)}</span></div>
+        <div class="mb-track"><div class="mb-fill" style="width:${Math.round(hospRev/total*100)}%;background:var(--orange)"></div></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${hosp.length} transactions · avg ${hosp.length?fmt(Math.round(hospRev/hosp.length)):'—'}</div>
+      </div>
+      <div class="mb-item">
+        <div class="mb-header"><span class="mb-name">🛍 Retail (>R150)</span><span class="mb-val">${fmt(retailRev)}</span></div>
+        <div class="mb-track"><div class="mb-fill" style="width:${Math.round(retailRev/total*100)}%;background:var(--blue)"></div></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${retail.length} transactions · avg ${retail.length?fmt(Math.round(retailRev/retail.length)):'—'}</div>
+      </div>
+    </div>`;
+}
+
+function renderRecentTx() {
+  const rows = [...allData.payments].slice(0,8);
+  document.getElementById('recentTx').innerHTML = rows.length ? rows.map(p=>`
+    <div class="detail-row" style="cursor:pointer" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Transaction")'>
+      <div>
+        <div style="font-size:12px;font-weight:600">${fmt(getAmt(p))}</div>
+        <div style="font-size:10px;color:var(--muted)">${fmtTime(p.created_at||p.createdAt)}</div>
+      </div>
+      <div style="text-align:right">${statusBadge(p.status)}</div>
+    </div>`).join('') : '<div style="color:var(--muted);font-size:12px">No recent transactions</div>';
+}
+
+function renderTodayTable() {
+  const today = new Date().toISOString().substring(0,10);
+  const rows = allData.payments.filter(p=>(p.created_at||p.createdAt||'').startsWith(today));
+  document.getElementById('todayCount').textContent = rows.length+' transactions today · '+fmt(rows.filter(p=>['successful','succeeded'].includes(getStatus(p))).reduce((s,p)=>s+getAmt(p),0));
+  document.getElementById('todayTable').innerHTML = rows.length ? `<table>
+    <thead><tr><th>Time</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th></tr></thead>
+    <tbody>${rows.map(p=>`<tr>
+      <td style="color:var(--muted)">${fmtTime(p.created_at||p.createdAt)}</td>
+      <td style="font-weight:700;color:var(--accent)">${fmt(getAmt(p))}</td>
+      <td>${methodBadge(getMethod(p))}</td>
+      <td>${statusBadge(p.status)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${p.externalReference||p.metadata?.reference||'—'}</td>
+    </tr>`).join('')}</tbody></table>` :
+    '<div class="empty"><div class="empty-icon">◈</div><div class="empty-text">No transactions today yet</div></div>';
+}
+
+// ═══════════════════════════════════════════════════
+//  SALES SECTION
+// ═══════════════════════════════════════════════════
+function renderSalesSection() {
+  const pays = allData.payments.filter(p=>['successful','succeeded'].includes(getStatus(p)));
+  const gross = pays.reduce((s,p)=>s+getAmt(p),0);
+  const refunded = allData.refunds.reduce((s,r)=>s+getAmt(r),0);
+  const cardRev = pays.filter(p=>getMethod(p)==='card').reduce((s,p)=>s+getAmt(p),0);
+  const otherRev = gross-cardRev;
+  document.getElementById('salesGross').textContent = fmt(gross);
+  document.getElementById('salesNet').textContent = fmt(gross-refunded);
+  document.getElementById('salesCard').textContent = fmt(cardRev);
+  document.getElementById('salesOther').textContent = fmt(otherRev);
+
+  // Day of week chart
+  const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const byDow = new Array(7).fill(0);
+  pays.forEach(p=>{ const d=new Date(p.created_at||p.createdAt||0); byDow[d.getDay()]+=getAmt(p); });
+  const maxDow = Math.max(...byDow,1);
+  document.getElementById('dowChart').innerHTML = byDow.map((v,i)=>`<div class="bc-bar-wrap"><div class="bc-bar orange" style="height:${Math.max(3,Math.round(v/maxDow*76))}px" title="${dow[i]}: ${fmt(v)}"></div></div>`).join('');
+  document.getElementById('dowLabels').innerHTML = dow.map(d=>`<div class="bc-label">${d}</div>`).join('');
+
+  // Size bands
+  const bands = [{label:'Under R50',min:0,max:5000},{label:'R50–R200',min:5000,max:20000},{label:'R200–R500',min:20000,max:50000},{label:'R500–R1k',min:50000,max:100000},{label:'Over R1k',min:100000,max:Infinity}];
+  const bandCounts = bands.map(b=>pays.filter(p=>getAmt(p)>=b.min&&getAmt(p)<b.max).length);
+  const maxBand = Math.max(...bandCounts,1);
+  const colors = ['var(--accent)','var(--blue)','var(--purple)','var(--orange)','var(--yellow)'];
+  document.getElementById('sizeBands').innerHTML = bands.map((b,i)=>`
+    <div class="mb-item">
+      <div class="mb-header"><span class="mb-name">${b.label}</span><span class="mb-val">${bandCounts[i]} txn</span></div>
+      <div class="mb-track"><div class="mb-fill" style="width:${Math.round(bandCounts[i]/maxBand*100)}%;background:${colors[i]}"></div></div>
+    </div>`).join('');
+
+  renderSalesTable();
+}
+
+let salesFiltered = [];
+function renderSalesTable(data) {
+  const rows = data || allData.payments;
+  salesFiltered = rows;
+  document.getElementById('salesCount').textContent = rows.length+' payments';
+  if (!rows.length) { document.getElementById('salesTable').innerHTML='<div class="empty"><div class="empty-icon">↗</div><div class="empty-text">No sales data</div></div>'; return; }
+  const page = pages.sales;
+  const slice = rows.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+  document.getElementById('salesTable').innerHTML = `<table>
+    <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th></th></tr></thead>
+    <tbody>${slice.map(p=>`<tr>
+      <td style="color:var(--muted);font-size:11px">${fmtDate(p.created_at||p.createdAt)}</td>
+      <td style="font-weight:700;color:var(--accent)">${fmt(getAmt(p))}</td>
+      <td>${methodBadge(getMethod(p))}</td>
+      <td>${statusBadge(p.status)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${p.externalReference||p.metadata?.reference||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Payment")'>→</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  const total = Math.ceil(rows.length/PAGE_SIZE);
+  if (total>1) {
+    document.getElementById('salesPagination').style.display='flex';
+    document.getElementById('salesPageInfo').textContent='Page '+page+' of '+total;
+  } else { document.getElementById('salesPagination').style.display='none'; }
+}
+function filterSales() {
+  const q = document.getElementById('salesSearch').value.toLowerCase();
+  const m = document.getElementById('salesMethod').value.toLowerCase();
+  pages.sales=1;
+  renderSalesTable(allData.payments.filter(p=>
+    (!q||JSON.stringify(p).toLowerCase().includes(q))&&
+    (!m||(getMethod(p)).toLowerCase().includes(m))
+  ));
+}
+
+// ═══════════════════════════════════════════════════
+//  TRANSACTIONS
+// ═══════════════════════════════════════════════════
+let txFiltered = [];
+function renderTxTable(data) {
+  const rows = data||allData.payments;
+  txFiltered = rows;
+  document.getElementById('txCount').textContent = rows.length+' transactions';
+  if (!rows.length) { document.getElementById('txTable').innerHTML='<div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No transactions</div></div>'; return; }
+  const page=pages.tx, slice=rows.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
+  document.getElementById('txTable').innerHTML = `<table>
+    <thead><tr><th>ID</th><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th></th></tr></thead>
+    <tbody>${slice.map(p=>`<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(p.id||'').substring(0,16)}…</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(p.created_at||p.createdAt)}</td>
+      <td style="font-weight:700;color:var(--accent)">${fmt(getAmt(p))}</td>
+      <td>${methodBadge(getMethod(p))}</td>
+      <td>${statusBadge(p.status)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${p.externalReference||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Transaction")'>→</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  const total=Math.ceil(rows.length/PAGE_SIZE);
+  if(total>1){document.getElementById('txPagination').style.display='flex';document.getElementById('txPageInfo').textContent='Page '+page+' of '+total;}
+  else{document.getElementById('txPagination').style.display='none';}
+}
+function filterTx() {
+  const q=document.getElementById('txSearch').value.toLowerCase();
+  const s=document.getElementById('txStatus').value.toLowerCase();
+  const m=document.getElementById('txMethod').value.toLowerCase();
+  pages.tx=1;
+  renderTxTable(allData.payments.filter(p=>
+    (!q||JSON.stringify(p).toLowerCase().includes(q))&&
+    (!s||getStatus(p)===s)&&
+    (!m||(getMethod(p)).toLowerCase().includes(m))
+  ));
+}
+function changePage(which,dir) {
+  const total=Math.ceil((which==='tx'?txFiltered:salesFiltered).length/PAGE_SIZE);
+  pages[which]=Math.max(1,Math.min(total,pages[which]+dir));
+  if(which==='tx')renderTxTable(txFiltered); else renderSalesTable(salesFiltered);
+}
+
+// ═══════════════════════════════════════════════════
+//  PAYOUTS
+// ═══════════════════════════════════════════════════
+function renderPayoutKpis() {
+  const total=allData.payouts.reduce((s,p)=>s+getAmt(p),0);
+  document.getElementById('payoutTotal').textContent=fmt(total);
+  document.getElementById('payoutAvg').textContent=allData.payouts.length?fmt(Math.round(total/allData.payouts.length)):'—';
+  document.getElementById('payoutCount').textContent=allData.payouts.length;
+}
+function renderPayoutsTable() {
+  const rows=allData.payouts;
+  document.getElementById('payoutsCountSub').textContent=rows.length+' payouts';
+  if(!rows.length){document.getElementById('payoutsTable').innerHTML='<div class="empty"><div class="empty-icon">⬖</div><div class="empty-text">No payouts</div></div>';return;}
+  document.getElementById('payoutsTable').innerHTML=`<table>
+    <thead><tr><th>ID</th><th>Date</th><th>Gross</th><th>Net</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows.map(p=>`<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(p.id||'').substring(0,18)}…</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(p.created_at||p.settledAt)}</td>
+      <td style="font-weight:700;color:var(--accent)">${fmt(p.grossAmount?.value||getAmt(p))}</td>
+      <td style="color:var(--success)">${fmt(p.netAmount?.value||0)}</td>
+      <td>${statusBadge(p.status)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&apos;")},"Payout")'>→</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  REFUNDS
+// ═══════════════════════════════════════════════════
+function renderRefundKpis() {
+  const total=allData.refunds.reduce((s,r)=>s+getAmt(r),0);
+  document.getElementById('refundTotal').textContent=fmt(total);
+  document.getElementById('refundCount').textContent=allData.refunds.length;
+  document.getElementById('refundAvg').textContent=allData.refunds.length?fmt(Math.round(total/allData.refunds.length)):'—';
+  // Method breakdown
+  const byMethod={};
+  allData.refunds.forEach(r=>{ const m=r.refundMethod||r.method||'card'; byMethod[m]=(byMethod[m]||0)+getAmt(r); });
+  const maxM=Math.max(...Object.values(byMethod),1);
+  document.getElementById('refundMethodBreak').innerHTML=Object.entries(byMethod).sort((a,b)=>b[1]-a[1]).map(([m,v])=>`
+    <div class="mb-item">
+      <div class="mb-header"><span class="mb-name">${m}</span><span class="mb-val">${fmt(v)}</span></div>
+      <div class="mb-track"><div class="mb-fill" style="width:${Math.round(v/maxM*100)}%;background:var(--orange)"></div></div>
+    </div>`).join('')||'<div style="color:var(--muted);font-size:12px">No refunds</div>';
+}
 function renderRefundsTable() {
-  const rows = allData.refunds;
-  document.getElementById('refundsCount').textContent = rows.length + ' refunds';
-  if (!rows.length) {
-    document.getElementById('refundsTable').innerHTML = '<div class="empty"><div class="empty-icon">↩</div><div class="empty-text">No refunds found</div></div>';
-    return;
-  }
-  document.getElementById('refundsTable').innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Refund ID</th><th>Payment Ref</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th></th>
-      </tr></thead>
-      <tbody>${rows.map(r => `
-        <tr>
-          <td class="mono" style="font-size:11px;color:var(--muted)">${(r.id||'').substring(0,20)}…</td>
-          <td class="mono" style="font-size:11px">${(r.paymentReference || r.payment_id || '—').substring(0,16)}…</td>
-          <td style="font-weight:700;color:var(--accent2)">${fmt(r.amount?.value || r.amount || 0)}</td>
-          <td>${r.refundMethod || r.method || '—'}</td>
-          <td>${statusBadge(r.status)}</td>
-          <td style="color:var(--muted);font-size:12px">${fmtDate(r.processedAt || r.created_at)}</td>
-          <td><button class="btn btn-outline btn-sm" onclick='openDrawer(${JSON.stringify(r)}, "Refund")'>Details</button></td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
+  const rows=allData.refunds;
+  document.getElementById('refundsCountSub').textContent=rows.length+' refunds';
+  if(!rows.length){document.getElementById('refundsTable').innerHTML='<div class="empty"><div class="empty-icon">↩</div><div class="empty-text">No refunds</div></div>';return;}
+  document.getElementById('refundsTable').innerHTML=`<table>
+    <thead><tr><th>ID</th><th>Date</th><th>Amount</th><th>Method</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(r.id||'').substring(0,18)}…</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(r.processedAt||r.created_at)}</td>
+      <td style="font-weight:700;color:var(--orange)">${fmt(getAmt(r))}</td>
+      <td>${methodBadge(r.refundMethod||r.method)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(r).replace(/'/g,"&apos;")},"Refund")'>→</button></td>
+    </tr>`).join('')}</tbody></table>`;
 }
-
-function renderRefundStats() {
-  const total = allData.refunds.reduce((s, r) => s + (r.amount?.value || r.amount || 0), 0);
-  document.getElementById('refundStats').innerHTML = `
-    <div class="detail-row"><div class="detail-key">Total Refunds</div><div class="detail-val" style="color:var(--accent)">${allData.refunds.length}</div></div>
-    <div class="detail-row"><div class="detail-key">Total Amount</div><div class="detail-val" style="color:var(--accent2);font-weight:700">${fmt(total)}</div></div>
-    <div class="detail-row"><div class="detail-key">Avg Refund</div><div class="detail-val">${allData.refunds.length ? fmt(Math.round(total/allData.refunds.length)) : '—'}</div></div>`;
-}
-
 async function createRefund() {
-  const paymentId = document.getElementById('refundPaymentId').value.trim();
-  const amount = document.getElementById('refundAmount').value;
-  const reason = document.getElementById('refundReason').value.trim();
-  if (!paymentId) { toast('Payment ID required', 'error'); return; }
-  const body = { paymentReference: paymentId };
-  if (amount) body.amount = { value: parseInt(amount), currencyCode: 'ZAR' };
-  if (reason) body.reason = reason;
+  const pid=document.getElementById('refundPaymentId').value.trim();
+  const amt=document.getElementById('refundAmount').value;
+  const reason=document.getElementById('refundReason').value.trim();
+  if(!pid){toast('Payment ID required','','error');return;}
+  const body={paymentReference:pid};
+  if(amt)body.amount={value:parseInt(amt),currencyCode:'ZAR'};
+  if(reason)body.reason=reason;
   try {
-    const res = await yocoFetch('/v1/refunds', 'POST', body);
-    toast('Refund created: ' + (res.id || 'success'), 'success');
+    const res=await yocoFetch('/v1/refunds','POST',body);
+    toast('Refund created','ID: '+(res.id||'success'),'success');
     await loadRefunds();
   } catch(e) {
-    toast('Refund failed: ' + e.message, 'error');
+    const err=e.uiError||{title:e.message,detail:''};
+    toast(err.title,err.detail,'error');
   }
 }
 
-// ── LOAD PAYOUTS ───────────────────────────────────────
-async function loadPayouts(silent = false) {
-  try {
-    const data = await yocoFetch('/v1/payouts?count=100');
-    allData.payouts = data.payouts || data.data || (Array.isArray(data) ? data : []);
-    renderPayoutsTable();
-    document.getElementById('statTotalPayouts').textContent = allData.payouts.length;
-    document.getElementById('statPayoutsBadge').textContent = 'live data';
-    return data;
-  } catch(e) {
-    if (!silent) { const err = e.uiError || {title: e.message, detail: '', hint: ''}; toast(err.title, err.detail, 'error'); }
-    throw e;
-  }
+// ═══════════════════════════════════════════════════
+//  ORDERS
+// ═══════════════════════════════════════════════════
+function renderOrdersTable(data) {
+  const rows=data||allData.orders;
+  document.getElementById('ordersCountSub').textContent=rows.length+' orders';
+  if(!rows.length){document.getElementById('ordersTable').innerHTML='<div class="empty"><div class="empty-icon">◉</div><div class="empty-text">No orders</div></div>';return;}
+  document.getElementById('ordersTable').innerHTML=`<table>
+    <thead><tr><th>Order ID</th><th>Reference</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
+    <tbody>${rows.map(o=>`<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${(o.id||'').substring(0,18)}…</td>
+      <td>${o.humanReference||o.human_reference||'—'}</td>
+      <td style="font-weight:700;color:var(--accent)">${fmt(o.totalAmount?.value||getAmt(o))}</td>
+      <td>${statusBadge(o.status)}</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(o.created_at||o.createdAt)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick='openDrawer(${JSON.stringify(o).replace(/'/g,"&apos;")},"Order")'>→</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+function filterOrders() {
+  const q=document.getElementById('orderSearch').value.toLowerCase();
+  const s=document.getElementById('orderStatus').value.toLowerCase();
+  renderOrdersTable(allData.orders.filter(o=>(!q||JSON.stringify(o).toLowerCase().includes(q))&&(!s||(o.status||'').toLowerCase()===s)));
 }
 
-function renderPayoutsTable() {
-  const rows = allData.payouts;
-  document.getElementById('payoutsCount').textContent = rows.length + ' payouts';
-  if (!rows.length) {
-    document.getElementById('payoutsTable').innerHTML = '<div class="empty"><div class="empty-icon">⬖</div><div class="empty-text">No payouts found</div></div>';
-    return;
-  }
-  document.getElementById('payoutsTable').innerHTML = `
-    <table>
-      <thead><tr>
-        <th>Payout ID</th><th>Amount</th><th>Status</th><th>Net Amount</th><th>Date</th><th></th>
-      </tr></thead>
-      <tbody>${rows.map(p => `
-        <tr>
-          <td class="mono" style="font-size:11px;color:var(--muted)">${(p.id||'').substring(0,20)}…</td>
-          <td style="font-weight:700;color:var(--accent)">${fmt(p.amount?.value || p.grossAmount?.value || p.amount || 0)}</td>
-          <td>${statusBadge(p.status)}</td>
-          <td style="color:var(--success)">${fmt(p.netAmount?.value || 0)}</td>
-          <td style="color:var(--muted);font-size:12px">${fmtDate(p.created_at || p.settledAt)}</td>
-          <td><button class="btn btn-outline btn-sm" onclick='openDrawer(${JSON.stringify(p)}, "Payout")'>Details</button></td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-// ── PAYMENT LINK ───────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  PAYMENT LINKS & RAW
+// ═══════════════════════════════════════════════════
 async function fetchPaymentLink() {
-  const id = document.getElementById('plinkId').value.trim();
-  if (!id) { toast('Enter a payment link ID', 'error'); return; }
-  try {
-    const data = await yocoFetch('/v1/payment_links/' + id);
-    openDrawer(data, 'Payment Link');
-  } catch(e) {
-    toast('Error: ' + e.message, 'error');
-  }
+  const id=document.getElementById('plinkId').value.trim();
+  if(!id){toast('Enter a payment link ID','','error');return;}
+  try { const d=await yocoFetch('/v1/payment_links/'+id); openDrawer(d,'Payment Link'); }
+  catch(e){const err=e.uiError||{title:e.message,detail:''};toast(err.title,err.detail,'error');}
 }
-
-// ── RAW QUERY ──────────────────────────────────────────
 async function rawQuery() {
-  const method = document.getElementById('rawMethod').value;
-  const endpoint = document.getElementById('rawEndpoint').value.trim();
-  const bodyStr = document.getElementById('rawBody').value.trim();
-  let body = null;
-  if (bodyStr) { try { body = JSON.parse(bodyStr); } catch(e) { toast('Invalid JSON body', 'error'); return; } }
-  document.getElementById('rawResponse').textContent = 'Loading…';
+  const method=document.getElementById('rawMethod').value;
+  const endpoint=document.getElementById('rawEndpoint').value.trim();
+  const bodyStr=document.getElementById('rawBody').value.trim();
+  let body=null;
+  if(bodyStr){try{body=JSON.parse(bodyStr);}catch(e){toast('Invalid JSON body','','error');return;}}
+  document.getElementById('rawResponse').textContent='Loading…';
   try {
-    const data = await yocoFetch(endpoint, method, body);
-    document.getElementById('rawResponse').textContent = JSON.stringify(data, null, 2);
+    const d=await yocoFetch(endpoint,method,body);
+    document.getElementById('rawResponse').textContent=JSON.stringify(d,null,2);
   } catch(e) {
-    document.getElementById('rawResponse').textContent = 'Error: ' + e.message;
+    const err=e.uiError||{title:e.message,detail:''};
+    document.getElementById('rawResponse').textContent=err.title+(err.detail?'\n'+err.detail:'');
   }
 }
 
-// ── OVERVIEW ───────────────────────────────────────────
-function renderOverview() {
-  // Chart
-  const byDay = {};
-  allData.payments.forEach(p => {
-    const d = new Date(p.created_at || p.createdAt || Date.now());
-    const key = d.toLocaleDateString('en-ZA', { weekday: 'short' });
-    byDay[key] = (byDay[key] || 0) + (p.amount?.value || p.amount || 0);
-  });
-  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const maxVal = Math.max(...days.map(d => byDay[d] || 0), 1);
-  document.getElementById('chartBars').innerHTML = days.map(d => {
-    const v = byDay[d] || 0;
-    const h = Math.max(4, Math.round((v / maxVal) * 90));
-    return `<div class="bar-wrap"><div class="bar" style="height:${h}px" title="${d}: ${fmt(v)}"></div><div class="bar-label">${d}</div></div>`;
-  }).join('');
-
-  // Recent activity
-  const recent = [...allData.payments].slice(0, 5);
-  document.getElementById('recentActivity').innerHTML = recent.length ? recent.map(p => `
-    <div class="detail-row">
-      <div style="font-size:12px;color:var(--muted)">${fmtDate(p.created_at || p.createdAt)}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--accent)">${fmt(p.amount?.value || p.amount || 0)}</div>
-    </div>`).join('') : '<div style="color:var(--muted);font-size:13px">No recent payments</div>';
-
-  // Overview payments table
-  const oPay = allData.payments.slice(0, 10);
-  document.getElementById('overviewPaymentsTable').innerHTML = oPay.length ? `
-    <table>
-      <thead><tr><th>ID</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
-      <tbody>${oPay.map(p => `
-        <tr>
-          <td class="mono" style="font-size:11px;color:var(--muted)">${(p.id||'').substring(0,22)}…</td>
-          <td style="font-weight:700;color:var(--accent)">${fmt(p.amount?.value || p.amount || 0)}</td>
-          <td>${statusBadge(p.status)}</td>
-          <td style="color:var(--muted);font-size:12px">${fmtDate(p.created_at || p.createdAt)}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>` : '<div class="empty"><div class="empty-text">No payments</div></div>';
-}
-
-// ── DRAWER ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  DRAWER & UTILS
+// ═══════════════════════════════════════════════════
 function openDrawer(obj, label) {
-  document.getElementById('drawerTitle').textContent = label + ' Details';
-  document.getElementById('drawerId').textContent = obj.id || '';
-  const skip = new Set(['id']);
-  document.getElementById('drawerContent').innerHTML = Object.entries(obj).map(([k, v]) => {
-    const val = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v ?? '—');
-    const isAmt = k.toLowerCase().includes('amount');
-    const display = (isAmt && typeof v === 'number') ? fmt(v) : val;
-    return `<div class="detail-row">
-      <div class="detail-key">${k}</div>
-      <div class="detail-val mono" style="font-size:12px">${display}</div>
-    </div>`;
+  if (typeof obj === 'string') { try { obj=JSON.parse(obj); } catch(_){} }
+  document.getElementById('drawerTitle').textContent=label+' Details';
+  document.getElementById('drawerId').textContent=obj.id||'';
+  document.getElementById('drawerContent').innerHTML=Object.entries(obj).map(([k,v])=>{
+    const isAmt=k.toLowerCase().includes('amount')&&typeof v==='number';
+    const val=typeof v==='object'?JSON.stringify(v,null,2):String(v??'—');
+    return `<div class="detail-row"><div class="detail-key">${k}</div><div class="detail-val">${isAmt?fmt(v):val}</div></div>`;
   }).join('');
   document.getElementById('drawerOverlay').classList.add('open');
-  setTimeout(() => document.getElementById('drawer').classList.add('open'), 10);
+  setTimeout(()=>document.getElementById('drawer').classList.add('open'),10);
 }
 function closeDrawer() {
   document.getElementById('drawer').classList.remove('open');
-  setTimeout(() => document.getElementById('drawerOverlay').classList.remove('open'), 300);
+  setTimeout(()=>document.getElementById('drawerOverlay').classList.remove('open'),280);
 }
 
-// ── PAGINATION ─────────────────────────────────────────
-function changePage(resource, dir) {
-  const total = Math.ceil(allData[resource].length / PAGE_SIZE);
-  pages[resource] = Math.max(1, Math.min(total, pages[resource] + dir));
-  if (resource === 'payments') renderPaymentsTable();
-}
-
-// ── EXPORT CSV ─────────────────────────────────────────
 function exportCSV(resource) {
-  const rows = allData[resource];
-  if (!rows.length) { toast('No data to export', 'error'); return; }
-  const keys = Object.keys(rows[0]).filter(k => typeof rows[0][k] !== 'object');
-  const csv = [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = `yoco-${resource}-${new Date().toISOString().slice(0,10)}.csv`;
+  const rows=allData[resource];
+  if(!rows.length){toast('No data to export','','error');return;}
+  const keys=Object.keys(rows[0]).filter(k=>typeof rows[0][k]!=='object');
+  const csv=[keys.join(','),...rows.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='yoco-'+resource+'-'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
-  toast(`Exported ${rows.length} ${resource}`, 'success');
+  toast('Exported',''+rows.length+' '+resource+' downloaded','success',3000);
 }
 
-// ── REFRESH ALL ────────────────────────────────────────
-async function refreshAll() {
-  if (!connected) { toast('Connect first — enter your API key and click Connect', 'error'); return; }
-  await connect();
-}
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+loadBizSettings();
 
-// ── INIT ───────────────────────────────────────────────
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
-document.querySelectorAll('.nav-item')[0].classList.add('active');
-
-// ── FIREBASE STATUS CHECK ──────────────────────────────
-// The module script is async — poll until _fb is available
-(function checkFb() {
-  const dot  = document.getElementById('fbDot');
-  const text = document.getElementById('fbText');
-  if (!dot || !text) return;
-  if (window._fb) {
-    dot.className  = 'status-dot live';
-    text.textContent = 'Firebase ready';
-    text.style.color = 'var(--success)';
-  } else {
-    dot.className  = 'status-dot';
-    text.textContent = 'Firebase loading…';
-    setTimeout(checkFb, 500);
-  }
+// Firebase status poll
+(function checkFb(){
+  const dot=document.getElementById('fbDot'),dot2=document.getElementById('fbDot2');
+  const txt=document.getElementById('fbText'),txt2=document.getElementById('fbText2');
+  if(window._fbReady){
+    [dot,dot2].forEach(d=>{if(d)d.className='fb-dot ready';});
+    [txt,txt2].forEach(t=>{if(t){t.textContent='Firebase ready';t.style.color='var(--success)';}});
+  } else { setTimeout(checkFb,400); }
 })();
 </script>
 </body>
