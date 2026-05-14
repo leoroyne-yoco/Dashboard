@@ -10,958 +10,1332 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: { extend: { colors: { darkBg:'#0f172a', darkCard:'#1e293b', darkBorder:'#334155' } } }
-  }
-  if (localStorage.theme === 'light') document.documentElement.classList.replace('dark','light');
+  tailwind.config={darkMode:'class',theme:{extend:{colors:{darkBg:'#0f172a',darkCard:'#1e293b',darkBorder:'#334155'}}}}
+  if(localStorage.theme==='light')document.documentElement.classList.replace('dark','light');
 </script>
-
-<!-- Firebase -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp }
-    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  const firebaseConfig = {
-    apiKey:"AIzaSyAUyWmw_8mw2uNuusYu3TF9flpqPOWa71s",
-    authDomain:"yoco-pos-dashbord.firebaseapp.com",
-    projectId:"yoco-pos-dashbord",
-    storageBucket:"yoco-pos-dashbord.firebasestorage.app",
-    messagingSenderId:"633313593449",
-    appId:"1:633313593449:web:a9ed814bc0b72de0043af8",
-    measurementId:"G-8KM0SSYRKH"
-  };
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const db = getFirestore(app);
-  window._fb = {
+  import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import{getAnalytics,logEvent}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+  import{getFirestore,collection,addDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  const app=initializeApp({apiKey:"AIzaSyAUyWmw_8mw2uNuusYu3TF9flpqPOWa71s",authDomain:"yoco-pos-dashbord.firebaseapp.com",projectId:"yoco-pos-dashbord",storageBucket:"yoco-pos-dashbord.firebasestorage.app",messagingSenderId:"633313593449",appId:"1:633313593449:web:a9ed814bc0b72de0043af8",measurementId:"G-8KM0SSYRKH"});
+  const analytics=getAnalytics(app),db=getFirestore(app);
+  window._fb={
     track(n,p={}){try{logEvent(analytics,n,p);}catch(e){}},
-    async saveSession(s,k){try{await addDoc(collection(db,'sessions'),{status:s,keyPrefix:k,ts:serverTimestamp()});}catch(e){}},
-    async saveSnapshot(stats){try{await addDoc(collection(db,'snapshots'),{...stats,ts:serverTimestamp()});}catch(e){}}
+    async save(col,data){try{await addDoc(collection(db,col),{...data,ts:serverTimestamp()});}catch(e){}}
   };
   window._fbReady=true;
 </script>
-
 <style>
-  body { font-family: 'Inter', sans-serif; }
-  .stat-label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; }
-  .stat-value { font-size:26px; font-weight:900; line-height:1.1; }
-  html.dark .stat-value { color:#f8fafc; }
-  html.light .stat-value { color:#0f172a; }
-  .sidebar { width:240px; flex-shrink:0; }
-  .nav-link { display:flex; align-items:center; gap:10px; padding:9px 14px; border-radius:10px; font-size:13px; font-weight:600; color:#64748b; cursor:pointer; transition:all .15s; }
-  .nav-link:hover { background:rgba(99,102,241,.08); color:#6366f1; }
-  .nav-link.active { background:rgba(99,102,241,.12); color:#6366f1; }
-  html.dark .nav-link.active { background:rgba(99,102,241,.15); color:#818cf8; }
-  .nav-section-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#94a3b8; padding:16px 14px 6px; }
-  .kpi-card { transition:box-shadow .2s; }
-  .kpi-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.08); }
-  html.dark .kpi-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.3); }
-  .status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-  .status-dot.live { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.2); animation:pulse 2s infinite; }
-  .status-dot.error { background:#ef4444; }
-  .status-dot.connecting { background:#f59e0b; animation:pulse 1s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-  .tab-btn { padding:10px 4px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; border-bottom:2px solid transparent; color:#94a3b8; transition:all .2s; cursor:pointer; white-space:nowrap; background:none; border-left:none; border-right:none; border-top:none; }
-  .tab-btn.active { border-bottom-color:#6366f1; color:#6366f1; }
-  html.dark .tab-btn.active { color:#818cf8; border-bottom-color:#818cf8; }
-  .tab-btn:hover:not(.active) { color:#6366f1; }
-  .method-bar-track { height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; }
-  html.dark .method-bar-track { background:#334155; }
-  .method-bar-fill { height:100%; border-radius:3px; transition:width .6s cubic-bezier(.4,0,.2,1); }
-  .section { display:none; }
-  .section.active { display:block; }
-  .toast { font-family:'Inter',sans-serif; animation:toastIn .25s ease; }
-  @keyframes toastIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
-  ::-webkit-scrollbar { width:5px; height:5px; }
-  ::-webkit-scrollbar-track { background:transparent; }
-  ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
-  html.dark ::-webkit-scrollbar-thumb { background:#334155; }
-  .chart-container { position:relative; }
-  /* Settings */
-  .settings-row { display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid; gap:16px; }
-  html.dark .settings-row { border-color:#334155; }
-  html.light .settings-row { border-color:#e2e8f0; }
-  .settings-row:last-child { border-bottom:none; }
+body{font-family:'Inter',sans-serif}
+.stat-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+.stat-value{font-size:26px;font-weight:900;line-height:1.1}
+html.dark .stat-value{color:#f8fafc}
+html.light .stat-value{color:#0f172a}
+.nav-link{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;transition:all .15s;user-select:none}
+.nav-link:hover{background:rgba(99,102,241,.08);color:#6366f1}
+html.dark .nav-link:hover{background:rgba(99,102,241,.12);color:#818cf8}
+.nav-link.active{background:rgba(99,102,241,.12);color:#6366f1}
+html.dark .nav-link.active{background:rgba(99,102,241,.18);color:#818cf8}
+.nav-group-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;padding:14px 14px 5px}
+.section{display:none!important}
+.section.active{display:block!important}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;display:inline-block}
+.status-dot.live{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2);animation:sdpulse 2s infinite}
+.status-dot.error{background:#ef4444}
+.status-dot.connecting{background:#f59e0b;animation:sdpulse 1s infinite}
+@keyframes sdpulse{0%,100%{opacity:1}50%{opacity:.4}}
+.method-bar-track{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden}
+html.dark .method-bar-track{background:#334155}
+.method-bar-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.kpi-card{transition:box-shadow .2s}
+.kpi-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.08)}
+html.dark .kpi-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid #e2e8f0;gap:16px}
+html.dark .settings-row{border-color:#334155}
+.settings-row:last-child{border-bottom:none}
+@keyframes toastIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-item{animation:toastIn .25s ease;font-family:'Inter',sans-serif}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+html.dark ::-webkit-scrollbar-thumb{background:#334155}
 </style>
 </head>
 <body class="dark:bg-darkBg bg-slate-50 dark:text-slate-100 text-slate-900 min-h-screen">
 
-<!-- TOAST -->
-<div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+<div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-<!-- DRAWER OVERLAY -->
-<div id="drawerOverlay" class="fixed inset-0 z-40 hidden" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px)" onclick="closeDrawer()">
+<!-- Drawer -->
+<div id="drawerOverlay" onclick="closeDrawer()" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden">
   <div id="drawer" onclick="event.stopPropagation()" class="absolute right-0 top-0 bottom-0 w-[420px] bg-white dark:bg-darkCard border-l dark:border-darkBorder shadow-2xl overflow-y-auto p-6 translate-x-full transition-transform duration-300">
     <div class="flex justify-between items-start mb-5">
       <div><h3 class="text-lg font-black" id="drawerTitle">Details</h3><p class="text-xs text-slate-400 font-mono mt-1" id="drawerId"></p></div>
-      <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+      <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold leading-none">&#x2715;</button>
     </div>
     <div id="drawerContent"></div>
   </div>
 </div>
 
-<!-- APP SHELL -->
 <div class="flex min-h-screen">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar fixed top-0 left-0 bottom-0 bg-white dark:bg-darkCard border-r dark:border-darkBorder flex flex-col z-30 overflow-y-auto">
-    <!-- Logo -->
-    <div class="px-5 py-5 border-b dark:border-darkBorder">
-      <div class="flex items-center gap-2 mb-1">
-        <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
-          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-        </div>
-        <span class="font-black text-base tracking-tight">Yoco Dash</span>
+<!-- SIDEBAR -->
+<aside class="fixed top-0 left-0 bottom-0 w-[220px] bg-white dark:bg-darkCard border-r dark:border-darkBorder flex flex-col z-30">
+  <div class="px-4 py-5 border-b dark:border-darkBorder">
+    <div class="flex items-center gap-2 mb-1">
+      <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
       </div>
-      <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Merchant Intelligence</p>
+      <span class="font-black text-sm tracking-tight">Yoco Dash</span>
     </div>
+    <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Merchant Intelligence</p>
+  </div>
+  <nav class="flex-1 p-3 overflow-y-auto">
+    <div class="nav-group-label">Business</div>
+    <div class="nav-link active" id="nav-overview" onclick="showSection('overview')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-link" id="nav-sales" onclick="showSection('sales')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      Sales Report
+    </div>
+    <div class="nav-link" id="nav-insights" onclick="showSection('insights')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Industry Insights
+    </div>
+    <div class="nav-link" id="nav-transactions" onclick="showSection('transactions')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Transactions
+    </div>
+    <div class="nav-group-label">Finance</div>
+    <div class="nav-link" id="nav-payouts" onclick="showSection('payouts')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+      Payouts
+    </div>
+    <div class="nav-link" id="nav-refunds" onclick="showSection('refunds')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+      Refunds
+    </div>
+    <div class="nav-group-label">Operations</div>
+    <div class="nav-link" id="nav-orders" onclick="showSection('orders')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+      Orders
+    </div>
+    <div class="nav-group-label">Developer</div>
+    <div class="nav-link" id="nav-raw" onclick="showSection('raw')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+      Raw Query
+    </div>
+    <div class="nav-group-label">Config</div>
+    <div class="nav-link" id="nav-settings" onclick="showSection('settings')">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Settings
+    </div>
+  </nav>
+  <div class="p-4 border-t dark:border-darkBorder space-y-2">
+    <div class="flex items-center gap-2">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="text-xs font-bold text-slate-500" id="statusText">Not connected</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 inline-block" id="fbDot"></span>
+      <span class="text-[10px] font-mono text-slate-400" id="fbText">Firebase loading</span>
+    </div>
+    <button onclick="toggleTheme()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-left">
+      <svg class="w-3.5 h-3.5 hidden dark:block text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
+      <svg class="w-3.5 h-3.5 block dark:hidden text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+      Toggle theme
+    </button>
+  </div>
+</aside>
 
-    <!-- Nav -->
-    <nav class="flex-1 p-3 space-y-0.5">
-      <div class="nav-section-label">Business</div>
-      <div class="nav-link active" data-section="overview" onclick="showSection('overview')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
-        Dashboard
-      </div>
-      <div class="nav-link" data-section="sales" onclick="showSection('sales')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-        Sales Report
-      </div>
-      <div class="nav-link" data-section="transactions" onclick="showSection('transactions')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-        Transactions
-      </div>
-      <div class="nav-section-label">Finance</div>
-      <div class="nav-link" data-section="payouts" onclick="showSection('payouts')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
-        Payouts
-      </div>
-      <div class="nav-link" data-section="refunds" onclick="showSection('refunds')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-        Refunds
-      </div>
-      <div class="nav-section-label">Operations</div>
-      <div class="nav-link" data-section="orders" onclick="showSection('orders')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-        Orders
-      </div>
-      <div class="nav-section-label">Developer</div>
-      <div class="nav-link" data-section="raw" onclick="showSection('raw')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-        Raw Query
-      </div>
-      <div class="nav-section-label">Config</div>
-      <div class="nav-link" data-section="settings" onclick="showSection('settings')">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        Settings
-      </div>
-    </nav>
+<!-- MAIN CONTENT -->
+<main class="ml-[220px] flex-1">
 
-    <!-- Bottom status -->
-    <div class="p-4 border-t dark:border-darkBorder space-y-2">
-      <div class="flex items-center gap-2">
-        <div class="status-dot" id="statusDot"></div>
-        <span class="text-xs font-bold text-slate-500" id="statusText">Not connected</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" id="fbDot"></div>
-        <span class="text-[10px] font-mono text-slate-400" id="fbText">Firebase loading…</span>
-      </div>
-      <button onclick="toggleTheme()" class="w-full mt-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
-        <svg class="w-3.5 h-3.5 hidden dark:block text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/></svg>
-        <svg class="w-3.5 h-3.5 block dark:hidden text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
-        Toggle theme
+<!-- OVERVIEW -->
+<div class="section active p-6 md:p-8" id="section-overview">
+  <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
+    <div>
+      <h1 class="text-2xl font-black tracking-tight">Dashboard</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
+        <span id="lastRefreshed">Retail &amp; Hospitality Overview</span>
+      </p>
+    </div>
+    <div class="flex gap-3 flex-wrap">
+      <button onclick="refreshAll()" class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-darkCard border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Refresh
+      </button>
+      <button onclick="exportCSV('payments')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export CSV
       </button>
     </div>
-  </aside>
+  </header>
 
-  <!-- MAIN -->
-  <main class="flex-1 ml-[240px] min-h-screen">
+  <!-- 7 KPIs -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-indigo-50/50 dark:from-darkCard dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Gross Revenue</p><p class="stat-value text-indigo-600 dark:text-indigo-400" id="kpiGross">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiTxCount">0 transactions</p>
+    </div>
+    <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
+      <p class="stat-label">Est. VAT (15%)</p><p class="stat-value" id="kpiVAT">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1">Tax component</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-orange-50/50 dark:from-darkCard dark:to-orange-900/10 border border-orange-100 dark:border-orange-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Avg Ticket</p><p class="stat-value text-orange-500" id="kpiAvg">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1">Per sale</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Refunds</p><p class="stat-value text-rose-500" id="kpiRefunds">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiRefundCount">0 refunds</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-emerald-50/50 dark:from-darkCard dark:to-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Success Rate</p><p class="stat-value text-emerald-500" id="kpiSuccessRate">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1">Of payments</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-violet-50/50 dark:from-darkCard dark:to-violet-900/10 border border-violet-100 dark:border-violet-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Total Payouts</p><p class="stat-value text-violet-500" id="kpiPayouts">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiPayoutCount">0 payouts</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-slate-50 dark:from-darkCard dark:to-slate-800 border dark:border-slate-700 shadow-sm rounded-2xl">
+      <p class="stat-label">Net Revenue</p><p class="stat-value" id="kpiNet">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1">After refunds</p>
+    </div>
+  </div>
 
-    <!-- ═══ OVERVIEW ═══ -->
-    <div class="section active p-6 md:p-8 max-w-[1400px]" id="section-overview">
-      <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
-        <div>
-          <h1 class="text-2xl font-black tracking-tight">Dashboard</h1>
-          <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
-            <span id="lastRefreshed">Retail &amp; Hospitality Overview</span>
-          </p>
-        </div>
-        <div class="flex gap-3 flex-wrap">
-          <button onclick="refreshAll()" class="flex items-center gap-2 px-4 py-2.5 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Refresh
-          </button>
-          <button onclick="exportCSV('payments')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Export
-          </button>
-        </div>
-      </header>
+  <!-- Industry KPIs row -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-amber-50/50 dark:from-darkCard dark:to-amber-900/10 border border-amber-100 dark:border-amber-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Peak Hour</p><p class="stat-value text-amber-600 dark:text-amber-400 text-2xl" id="kpiPeakHour">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiPeakHourRev">Highest revenue hour</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-teal-50/50 dark:from-darkCard dark:to-teal-900/10 border border-teal-100 dark:border-teal-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Best Day</p><p class="stat-value text-teal-600 dark:text-teal-400 text-2xl" id="kpiBestDay">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiBestDayRev">Highest single day</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Refund Rate</p><p class="stat-value text-rose-500 text-2xl" id="kpiRefundRate">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1">% of gross revenue</p>
+    </div>
+  </div>
 
-      <!-- 7 KPI Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-indigo-50/50 dark:from-darkCard dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Gross Revenue</p>
-          <p class="stat-value text-indigo-600 dark:text-indigo-400" id="kpiGross">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiTxCount">0 transactions</p>
+  <!-- Charts row -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+        <div class="flex justify-between items-center mb-5">
+          <h2 class="text-sm font-black uppercase tracking-tight">Sales Volume by Hour</h2>
+          <div class="flex gap-2">
+            <button id="btnHR" onclick="setHourlyMode('revenue')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">Revenue</button>
+            <button id="btnHV" onclick="setHourlyMode('volume')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold border dark:border-darkBorder text-slate-400">Volume</button>
+          </div>
         </div>
-        <div class="kpi-card p-5 bg-white dark:bg-darkCard border border-slate-100 dark:border-darkBorder shadow-sm rounded-2xl">
-          <p class="stat-label">Est. VAT (15%)</p>
-          <p class="stat-value" id="kpiVAT">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">Tax component</p>
-        </div>
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-orange-50/50 dark:from-darkCard dark:to-orange-900/10 border border-orange-100 dark:border-orange-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Avg Ticket</p>
-          <p class="stat-value text-orange-500" id="kpiAvg">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">Per sale</p>
-        </div>
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Refunds</p>
-          <p class="stat-value text-rose-500" id="kpiRefunds">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiRefundCount">0 refunds</p>
-        </div>
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-emerald-50/50 dark:from-darkCard dark:to-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Success Rate</p>
-          <p class="stat-value text-emerald-500" id="kpiSuccessRate">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">Payments</p>
-        </div>
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-violet-50/50 dark:from-darkCard dark:to-violet-900/10 border border-violet-100 dark:border-violet-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Total Payouts</p>
-          <p class="stat-value text-violet-500" id="kpiPayouts">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1" id="kpiPayoutCount">0 payouts</p>
-        </div>
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-slate-50 dark:from-darkCard dark:to-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl">
-          <p class="stat-label">Net Revenue</p>
-          <p class="stat-value" id="kpiNet">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">After refunds</p>
-        </div>
+        <div style="height:200px;position:relative"><canvas id="hourlyChart"></canvas></div>
       </div>
-
-      <!-- Charts Row -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <!-- Hourly + Daily charts -->
-        <div class="lg:col-span-2 space-y-6">
-          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
-            <div class="flex justify-between items-center mb-5">
-              <h2 class="text-base font-black uppercase tracking-tight dark:text-white">Sales Volume by Hour</h2>
-              <div class="flex gap-2">
-                <button onclick="setChartView('hourly','revenue',this)" class="tab-btn active px-3 py-1.5 text-[10px] border rounded-lg border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold" id="btnHourlyRevenue">Revenue</button>
-                <button onclick="setChartView('hourly','volume',this)" class="tab-btn px-3 py-1.5 text-[10px] border rounded-lg border-slate-200 dark:border-darkBorder text-slate-400 font-bold" id="btnHourlyVolume">Volume</button>
-              </div>
-            </div>
-            <div class="chart-container" style="height:200px"><canvas id="hourlyChart"></canvas></div>
-          </div>
-          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
-            <div class="flex justify-between items-center mb-5">
-              <h2 class="text-base font-black uppercase tracking-tight dark:text-white">Daily Revenue (Last 14 Days)</h2>
-              <button onclick="setChartView('daily','revenue',this)" class="tab-btn px-3 py-1.5 text-[10px] border rounded-lg border-slate-200 dark:border-darkBorder text-slate-400 font-bold">Trend</button>
-            </div>
-            <div class="chart-container" style="height:180px"><canvas id="dailyChart"></canvas></div>
-          </div>
-        </div>
-
-        <!-- Right column: method breakdown + segment -->
-        <div class="space-y-6">
-          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
-            <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Payment Breakdown</h2>
-            <table class="w-full text-sm">
-              <thead><tr class="text-slate-400 border-b dark:border-darkBorder">
-                <th class="pb-3 text-left font-black uppercase text-[10px] tracking-widest">Method</th>
-                <th class="pb-3 text-right font-black uppercase text-[10px] tracking-widest">Vol</th>
-                <th class="pb-3 text-right font-black uppercase text-[10px] tracking-widest">Amount</th>
-                <th class="pb-3 text-right font-black uppercase text-[10px] tracking-widest">Share</th>
-              </tr></thead>
-              <tbody id="methodTable" class="divide-y dark:divide-darkBorder"></tbody>
-            </table>
-          </div>
-          <!-- Efficiency block -->
-          <div class="p-6 bg-slate-950 text-white shadow-2xl rounded-2xl relative overflow-hidden">
-            <div class="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-3xl"></div>
-            <p class="text-[10px] font-black uppercase tracking-[.2em] text-indigo-400 mb-2">Avg Transaction Value</p>
-            <p class="text-4xl font-black tracking-tight mb-4" id="effAvg">—</p>
-            <div class="pt-4 border-t border-white/10">
-              <p class="text-[10px] font-black uppercase tracking-[.2em] text-indigo-400 mb-1">Net Revenue</p>
-              <p class="text-3xl font-black tracking-tight text-indigo-300" id="effNet">—</p>
-              <p class="text-[9px] font-bold text-white/30 uppercase tracking-tight mt-1">Gross − Refunds</p>
-            </div>
-          </div>
-          <!-- Retail vs Hospitality -->
-          <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
-            <h2 class="text-sm font-black uppercase tracking-tight dark:text-white mb-4">🏪 Retail vs 🍽 Hospitality</h2>
-            <p class="text-[10px] text-slate-400 mb-3">Estimated by ticket size (≤R150 = hospitality)</p>
-            <div id="segmentBars" class="space-y-3"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Today + Peak hours -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="lg:col-span-2 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
-          <div class="p-5 border-b dark:border-darkBorder flex justify-between items-center">
-            <div>
-              <h2 class="text-base font-black uppercase tracking-tight">Today's Transactions</h2>
-              <p class="text-xs text-slate-400 mt-0.5" id="todayMeta">—</p>
-            </div>
-            <button onclick="showSection('transactions')" class="text-xs font-bold text-indigo-500 hover:underline">View all →</button>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <tr>
-                  <th class="px-4 py-3 text-left">Time</th>
-                  <th class="px-4 py-3 text-left">Amount</th>
-                  <th class="px-4 py-3 text-left">Method</th>
-                  <th class="px-4 py-3 text-left">Status</th>
-                  <th class="px-4 py-3 text-left">Reference</th>
-                </tr>
-              </thead>
-              <tbody id="todayTableBody" class="divide-y dark:divide-darkBorder"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
-          <h2 class="text-sm font-black uppercase tracking-tight dark:text-white mb-4">🕐 Peak Hours Heatmap</h2>
-          <div class="grid grid-cols-6 gap-1.5 mb-2" id="peakGrid"></div>
-          <div class="grid grid-cols-6 gap-1.5" id="peakLabels"></div>
-          <div class="mt-4 pt-4 border-t dark:border-darkBorder">
-            <h2 class="text-sm font-black uppercase tracking-tight dark:text-white mb-3">📅 Day of Week</h2>
-            <div class="chart-container" style="height:100px"><canvas id="dowChart"></canvas></div>
-          </div>
-        </div>
+      <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+        <h2 class="text-sm font-black uppercase tracking-tight mb-5">Daily Revenue — Last 14 Days</h2>
+        <div style="height:180px;position:relative"><canvas id="dailyChart"></canvas></div>
       </div>
     </div>
-
-    <!-- ═══ SALES REPORT ═══ -->
-    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-sales">
-      <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
-        <div>
-          <h1 class="text-2xl font-black tracking-tight">Sales Report</h1>
-          <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Revenue analysis &amp; transaction ledger</p>
-        </div>
-        <div class="flex gap-3 flex-wrap">
-          <button onclick="exportExcel('sales')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Excel Export
-          </button>
-        </div>
-      </header>
-
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-indigo-50/50 dark:from-darkCard dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Gross Sales</p>
-          <p class="stat-value text-indigo-600 dark:text-indigo-400" id="sGross">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1" id="sTxCount">0 transactions</p>
-        </div>
-        <div class="kpi-card p-5 bg-white dark:bg-darkCard border border-slate-100 dark:border-darkBorder shadow-sm rounded-2xl">
-          <p class="stat-label">Est. VAT (15%)</p>
-          <p class="stat-value" id="sVAT">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">Tax component</p>
-        </div>
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Refunds</p>
-          <p class="stat-value text-rose-500" id="sRefunds">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1" id="sRefundCount">0 refunds</p>
-        </div>
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-emerald-50/50 dark:from-darkCard dark:to-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Net Sales</p>
-          <p class="stat-value text-emerald-600 dark:text-emerald-400" id="sNet">—</p>
-          <p class="text-[10px] font-bold text-slate-400 mt-1">After refunds</p>
+    <div class="space-y-6">
+      <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+        <h2 class="text-sm font-black uppercase tracking-tight mb-4">Payment Breakdown</h2>
+        <table class="w-full text-sm">
+          <thead><tr class="text-slate-400 border-b dark:border-darkBorder text-[10px] font-black uppercase tracking-widest">
+            <th class="pb-3 text-left">Method</th><th class="pb-3 text-right">Vol</th><th class="pb-3 text-right">Amount</th><th class="pb-3 text-right">Share</th>
+          </tr></thead>
+          <tbody id="methodTable" class="divide-y dark:divide-darkBorder"></tbody>
+        </table>
+      </div>
+      <div class="p-6 bg-slate-950 text-white rounded-2xl relative overflow-hidden">
+        <div class="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-3xl"></div>
+        <p class="text-[10px] font-black uppercase tracking-[.2em] text-indigo-400 mb-1">Avg Transaction</p>
+        <p class="text-4xl font-black tracking-tight mb-4" id="effAvg">—</p>
+        <div class="pt-4 border-t border-white/10">
+          <p class="text-[10px] font-black uppercase tracking-[.2em] text-indigo-400 mb-1">Net Revenue</p>
+          <p class="text-3xl font-black tracking-tight text-indigo-300" id="effNet">—</p>
+          <p class="text-[9px] font-bold text-white/30 uppercase tracking-tight mt-1">Gross - Refunds</p>
         </div>
       </div>
-
-      <!-- Charts -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
-          <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Revenue by Day of Week</h2>
-          <div class="chart-container" style="height:180px"><canvas id="salesDowChart"></canvas></div>
-        </div>
-        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl">
-          <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Transaction Size Bands</h2>
-          <div id="salesSizeBands" class="space-y-3"></div>
-        </div>
-      </div>
-
-      <!-- Payment method table full -->
-      <div class="p-6 bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl mb-6">
-        <h2 class="text-base font-black uppercase tracking-tight dark:text-white mb-5">Payment Breakdown</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead><tr class="text-slate-400 border-b dark:border-darkBorder">
-              <th class="pb-4 text-left font-black uppercase text-[10px] tracking-widest">Method</th>
-              <th class="pb-4 text-right font-black uppercase text-[10px] tracking-widest">Volume</th>
-              <th class="pb-4 text-right font-black uppercase text-[10px] tracking-widest">Gross Amount</th>
-              <th class="pb-4 text-right font-black uppercase text-[10px] tracking-widest">Share</th>
-              <th class="pb-4 text-left font-black uppercase text-[10px] tracking-widest pl-6">Distribution</th>
-            </tr></thead>
-            <tbody id="salesMethodTable" class="divide-y dark:divide-darkBorder"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Transaction Ledger with Gross/VAT/Net columns -->
-      <div class="bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
-        <div class="p-5 border-b dark:border-darkBorder flex flex-wrap justify-between items-center gap-4">
-          <div>
-            <h2 class="text-base font-black uppercase tracking-tight">Transaction Ledger</h2>
-            <p class="text-xs text-slate-400 mt-0.5" id="ledgerCount">—</p>
-          </div>
-          <div class="flex gap-3 flex-wrap items-center">
-            <div class="relative">
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-              <input id="ledgerSearch" type="text" placeholder="Search…" oninput="filterLedger()" class="pl-8 pr-3 py-2 border dark:border-darkBorder rounded-xl text-xs bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-48">
-            </div>
-            <select id="ledgerMethod" onchange="filterLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none">
-              <option value="">All Methods</option>
-              <option value="card">Card</option>
-              <option value="cash">Cash</option>
-              <option value="instant_eft">Instant EFT</option>
-            </select>
-            <select id="ledgerStatus" onchange="filterLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none">
-              <option value="">All Statuses</option>
-              <option value="successful">Successful</option>
-              <option value="failed">Failed</option>
-              <option value="pending">Pending</option>
-            </select>
-            <select id="ledgerRows" onchange="ledgerPage=1;renderLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
-              <option value="25" selected>25 rows</option>
-              <option value="50">50 rows</option>
-              <option value="100">100 rows</option>
-              <option value="9999">All</option>
-            </select>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm whitespace-nowrap">
-            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <tr>
-                <th class="px-4 py-4 text-left">#</th>
-                <th class="px-4 py-4 text-left">Date / Time</th>
-                <th class="px-4 py-4 text-left">Method</th>
-                <th class="px-4 py-4 text-right">Gross</th>
-                <th class="px-4 py-4 text-right">Est. VAT</th>
-                <th class="px-4 py-4 text-right">Net</th>
-                <th class="px-4 py-4 text-left">Status</th>
-                <th class="px-4 py-4 text-left">Reference</th>
-                <th class="px-4 py-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="ledgerBody" class="divide-y dark:divide-darkBorder"></tbody>
-          </table>
-        </div>
-        <!-- Page totals footer -->
-        <div id="ledgerTotals" class="p-5 border-t dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30 hidden">
-          <div class="flex flex-wrap gap-6 text-xs font-black uppercase tracking-widest">
-            <span class="text-slate-400">Page Totals:</span>
-            <span>Gross: <span id="pgGross" class="text-slate-800 dark:text-white ml-1">—</span></span>
-            <span>Est. VAT: <span id="pgVAT" class="text-amber-600 dark:text-amber-400 ml-1">—</span></span>
-            <span>Net: <span id="pgNet" class="text-indigo-600 dark:text-indigo-400 ml-1">—</span></span>
-          </div>
-        </div>
-        <div id="ledgerPagination" class="hidden p-4 border-t dark:border-darkBorder flex justify-between items-center bg-slate-50/30 dark:bg-slate-800/10">
-          <button id="ledgerPrev" onclick="changeLedgerPage(-1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-white dark:hover:bg-slate-700 transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-          <span id="ledgerPageIndicator" class="text-xs font-black text-slate-400 uppercase">Page 1 of 1</span>
-          <button id="ledgerNext" onclick="changeLedgerPage(1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-white dark:hover:bg-slate-700 transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
-        </div>
+      <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+        <h2 class="text-sm font-black uppercase tracking-tight mb-3">Retail vs Hospitality</h2>
+        <p class="text-[10px] text-slate-400 mb-3">Based on ticket size (under R150 = hospitality)</p>
+        <div id="segmentBars" class="space-y-3"></div>
       </div>
     </div>
+  </div>
 
-    <!-- ═══ TRANSACTIONS ═══ -->
-    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-transactions">
-      <header class="flex justify-between items-start mb-8 gap-4">
-        <div><h1 class="text-2xl font-black tracking-tight">Transactions</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">All payment transactions</p></div>
-        <button onclick="exportCSV('payments')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase transition-all">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Export CSV
-        </button>
-      </header>
-      <div class="flex gap-3 mb-5 flex-wrap">
-        <div class="relative flex-1 min-w-[200px]">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input id="txSearch" type="text" placeholder="Search ID, reference, amount…" oninput="filterTx()" class="w-full pl-9 pr-4 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkCard dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+  <!-- Today + Peak -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+      <div class="p-5 border-b dark:border-darkBorder flex justify-between items-center">
+        <div><h2 class="text-sm font-black uppercase tracking-tight">Today's Transactions</h2><p class="text-xs text-slate-400 mt-0.5" id="todayMeta">—</p></div>
+        <button onclick="showSection('transactions')" class="text-xs font-bold text-indigo-500 hover:underline">View all</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <tr><th class="px-4 py-3 text-left">Time</th><th class="px-4 py-3 text-left">Amount</th><th class="px-4 py-3 text-left">Method</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Ref</th></tr>
+          </thead>
+          <tbody id="todayBody" class="divide-y dark:divide-darkBorder"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="text-sm font-black uppercase tracking-tight mb-4">Peak Hours</h2>
+      <div class="grid grid-cols-6 gap-1.5 mb-1" id="peakGrid"></div>
+      <div class="grid grid-cols-6 gap-1.5 mb-5" id="peakLabels"></div>
+      <h2 class="text-sm font-black uppercase tracking-tight mb-3">Day of Week</h2>
+      <div style="height:100px;position:relative"><canvas id="dowChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- SALES REPORT -->
+<div class="section p-6 md:p-8" id="section-sales">
+  <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
+    <div><h1 class="text-2xl font-black tracking-tight">Sales Report</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Revenue analysis &amp; transaction ledger</p></div>
+    <div class="flex gap-3">
+      <button onclick="exportExcel()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Excel Export
+      </button>
+    </div>
+  </header>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-indigo-50/50 dark:from-darkCard dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Gross Sales</p><p class="stat-value text-indigo-600 dark:text-indigo-400" id="sGross">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="sTxCount">—</p>
+    </div>
+    <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
+      <p class="stat-label">Est. VAT (15%)</p><p class="stat-value" id="sVAT">—</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Refunds</p><p class="stat-value text-rose-500" id="sRefunds">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="sRefundCount">—</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-emerald-50/50 dark:from-darkCard dark:to-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Net Sales</p><p class="stat-value text-emerald-600 dark:text-emerald-400" id="sNet">—</p>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="text-sm font-black uppercase tracking-tight mb-5">Revenue by Day of Week</h2>
+      <div style="height:180px;position:relative"><canvas id="salesDowChart"></canvas></div>
+    </div>
+    <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="text-sm font-black uppercase tracking-tight mb-5">Transaction Size Bands</h2>
+      <div id="salesSizeBands" class="space-y-3"></div>
+    </div>
+  </div>
+  <!-- Payment method breakdown table -->
+  <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl mb-6">
+    <h2 class="text-sm font-black uppercase tracking-tight mb-5">Payment Breakdown</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-slate-400 border-b dark:border-darkBorder text-[10px] font-black uppercase tracking-widest">
+          <th class="pb-4 text-left">Method</th><th class="pb-4 text-right">Volume</th><th class="pb-4 text-right">Gross Amount</th><th class="pb-4 text-right">Share</th><th class="pb-4 text-left pl-6">Distribution</th>
+        </tr></thead>
+        <tbody id="salesMethodTable" class="divide-y dark:divide-darkBorder"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Transaction Ledger -->
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+    <div class="p-5 border-b dark:border-darkBorder flex flex-wrap justify-between items-center gap-3">
+      <div><h2 class="text-sm font-black uppercase tracking-tight">Transaction Ledger</h2><p class="text-xs text-slate-400 mt-0.5" id="ledgerCount">—</p></div>
+      <div class="flex gap-2 flex-wrap items-center">
+        <div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input id="ledgerSearch" oninput="filterLedger()" placeholder="Search…" class="pl-8 pr-3 py-2 border dark:border-darkBorder rounded-xl text-xs bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-44">
         </div>
-        <select id="txStatus" onchange="filterTx()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
-          <option value="">All Statuses</option><option value="successful">Successful</option><option value="failed">Failed</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option>
-        </select>
-        <select id="txMethod" onchange="filterTx()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+        <select id="ledgerMethod" onchange="filterLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
           <option value="">All Methods</option><option value="card">Card</option><option value="cash">Cash</option><option value="instant_eft">Instant EFT</option>
         </select>
-      </div>
-      <div class="bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
-        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
-          <h2 class="font-black uppercase text-sm tracking-tight">All Transactions</h2>
-          <span class="text-xs text-slate-400 font-medium" id="txCountLabel">—</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm whitespace-nowrap">
-            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <tr>
-                <th class="px-4 py-4 text-left">ID</th>
-                <th class="px-4 py-4 text-left">Date / Time</th>
-                <th class="px-4 py-4 text-right">Amount</th>
-                <th class="px-4 py-4 text-left">Method</th>
-                <th class="px-4 py-4 text-left">Status</th>
-                <th class="px-4 py-4 text-left">Reference</th>
-                <th class="px-4 py-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody id="txBody" class="divide-y dark:divide-darkBorder"></tbody>
-          </table>
-        </div>
-        <div id="txPagination" class="hidden p-4 border-t dark:border-darkBorder flex justify-between items-center">
-          <button onclick="changeTxPage(-1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-          <span id="txPageLabel" class="text-xs font-black text-slate-400">Page 1 of 1</span>
-          <button onclick="changeTxPage(1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
-        </div>
+        <select id="ledgerStatus" onchange="filterLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
+          <option value="">All Statuses</option><option value="successful">Successful</option><option value="failed">Failed</option><option value="pending">Pending</option>
+        </select>
+        <select id="ledgerRows" onchange="ledgerPage=1;renderLedger()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
+          <option value="25" selected>25 rows</option><option value="50">50 rows</option><option value="100">100 rows</option><option value="9999">All</option>
+        </select>
       </div>
     </div>
-
-    <!-- ═══ PAYOUTS ═══ -->
-    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-payouts">
-      <header class="flex justify-between items-start mb-8 gap-4">
-        <div><h1 class="text-2xl font-black tracking-tight">Payouts</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Settlement history from Yoco</p></div>
-        <button onclick="loadPayouts()" class="flex items-center gap-2 px-4 py-2.5 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">↺ Reload</button>
-      </header>
-      <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-violet-50/50 dark:from-darkCard dark:to-violet-900/10 border border-violet-100 dark:border-violet-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Total Paid Out</p><p class="stat-value text-violet-600 dark:text-violet-400" id="poTotal">—</p>
-        </div>
-        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
-          <p class="stat-label">Avg Payout</p><p class="stat-value" id="poAvg">—</p>
-        </div>
-        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
-          <p class="stat-label">Payout Count</p><p class="stat-value" id="poCount">—</p>
-        </div>
-      </div>
-      <div class="bg-white dark:bg-darkCard shadow-sm border border-slate-100 dark:border-darkBorder rounded-2xl overflow-hidden">
-        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
-          <h2 class="font-black uppercase text-sm tracking-tight">Payout History</h2>
-          <span class="text-xs text-slate-400" id="poCountLabel">—</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <tr>
-                <th class="px-4 py-4 text-left">Payout ID</th>
-                <th class="px-4 py-4 text-left">Date</th>
-                <th class="px-4 py-4 text-right">Gross</th>
-                <th class="px-4 py-4 text-right">Net</th>
-                <th class="px-4 py-4 text-left">Status</th>
-                <th class="px-4 py-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody id="payoutsBody" class="divide-y dark:divide-darkBorder"></tbody>
-          </table>
-        </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <tr><th class="px-4 py-4 text-left">#</th><th class="px-4 py-4 text-left">Date / Time</th><th class="px-4 py-4 text-left">Method</th><th class="px-4 py-4 text-right">Gross</th><th class="px-4 py-4 text-right">Est. VAT</th><th class="px-4 py-4 text-right">Net</th><th class="px-4 py-4 text-left">Status</th><th class="px-4 py-4 text-left">Reference</th><th class="px-4 py-4 text-center">Action</th></tr>
+        </thead>
+        <tbody id="ledgerBody" class="divide-y dark:divide-darkBorder"></tbody>
+      </table>
+    </div>
+    <div id="ledgerTotals" class="hidden p-5 border-t dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30">
+      <div class="flex flex-wrap gap-6 text-xs font-black uppercase tracking-widest">
+        <span class="text-slate-400">Page Totals:</span>
+        <span>Gross: <span id="pgGross" class="text-slate-800 dark:text-white ml-1">—</span></span>
+        <span>VAT: <span id="pgVAT" class="text-amber-600 dark:text-amber-400 ml-1">—</span></span>
+        <span>Net: <span id="pgNet" class="text-indigo-600 dark:text-indigo-400 ml-1">—</span></span>
       </div>
     </div>
+    <div id="ledgerPag" class="hidden p-4 border-t dark:border-darkBorder flex justify-between items-center">
+      <button onclick="chLedger(-1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+      <span id="ledgerPagLabel" class="text-xs font-black text-slate-400">Page 1 of 1</span>
+      <button onclick="chLedger(1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+</div>
 
-    <!-- ═══ REFUNDS ═══ -->
-    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-refunds">
-      <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Refunds</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Refund management &amp; history</p></header>
-      <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
-          <p class="stat-label">Total Refunded</p><p class="stat-value text-rose-500" id="rTotal">—</p>
-        </div>
-        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
-          <p class="stat-label">Count</p><p class="stat-value" id="rCount">—</p>
-        </div>
-        <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl">
-          <p class="stat-label">Avg Refund</p><p class="stat-value" id="rAvg">—</p>
-        </div>
+<!-- INDUSTRY INSIGHTS -->
+<div class="section p-6 md:p-8" id="section-insights">
+  <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
+    <div>
+      <h1 class="text-2xl font-black tracking-tight">Industry Insights</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Hospitality &amp; Retail performance analytics</p>
+    </div>
+    <div class="flex gap-3 flex-wrap items-center">
+      <div class="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+        <button onclick="setInsightsRange(1)" id="iRange1" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all text-slate-500">Today</button>
+        <button onclick="setInsightsRange(7)" id="iRange7" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all text-slate-500">7 Days</button>
+        <button onclick="setInsightsRange(30)" id="iRange30" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all text-slate-500">30 Days</button>
+        <button onclick="setInsightsRange(0)" id="iRange0" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white dark:bg-darkCard shadow-sm text-indigo-600 dark:text-indigo-400">All</button>
       </div>
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
-          <h2 class="font-black uppercase text-sm tracking-tight mb-5">↩ Process a Refund</h2>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Payment ID</label>
-              <input id="refundPaymentId" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none font-mono" placeholder="pay_xxxxxxxx">
-            </div>
-            <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Amount (cents — blank = full)</label>
-              <input id="refundAmount" type="number" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="e.g. 5000 = R50.00">
-            </div>
-            <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Reason (optional)</label>
-              <input id="refundReason" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Customer request…">
-            </div>
-            <button onclick="createRefund()" class="w-full bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all">Process Refund</button>
-          </div>
+      <button onclick="exportInsightsExcel()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export
+      </button>
+    </div>
+  </header>
+
+  <!-- Insights KPIs -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-amber-50/50 dark:from-darkCard dark:to-amber-900/10 border border-amber-100 dark:border-amber-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Peak Period</p><p class="stat-value text-amber-600 dark:text-amber-400 text-xl" id="iPeakPeriod">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="iPeakPeriodRev">Highest revenue window</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-teal-50/50 dark:from-darkCard dark:to-teal-900/10 border border-teal-100 dark:border-teal-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Best Day</p><p class="stat-value text-teal-600 dark:text-teal-400 text-xl" id="iBestDay">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="iBestDayRev">Highest revenue day</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Refund Rate</p><p class="stat-value text-rose-500 text-xl" id="iRefundRate">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1">% of gross revenue</p>
+    </div>
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-violet-50/50 dark:from-darkCard dark:to-violet-900/10 border border-violet-100 dark:border-violet-500/20 shadow-sm rounded-2xl">
+      <p class="stat-label">Avg / Day</p><p class="stat-value text-violet-600 dark:text-violet-400 text-xl" id="iAvgDay">—</p>
+      <p class="text-[10px] font-bold text-slate-400 mt-1" id="iActiveDays">Active trading days</p>
+    </div>
+  </div>
+
+  <!-- Service Periods + Spend Tiers -->
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+    <div class="lg:col-span-3 p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="text-sm font-black uppercase tracking-tight mb-5">Service Period Breakdown</h2>
+      <div id="servicePeriods" class="space-y-4"></div>
+    </div>
+    <div class="lg:col-span-2 p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="text-sm font-black uppercase tracking-tight mb-5">Spend Tier Analysis</h2>
+      <div id="spendTiers" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- Day x Hour chart + Method Performance -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2 p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="text-sm font-black uppercase tracking-tight mb-5">Revenue by Hour — Day of Week</h2>
+      <div style="height:220px;position:relative"><canvas id="heatmapChart"></canvas></div>
+    </div>
+    <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="text-sm font-black uppercase tracking-tight mb-5">Method Performance</h2>
+      <div id="methodPerf" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- Hospitality + Retail deep dive -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="p-6 bg-gradient-to-br from-orange-50 to-amber-50/60 dark:from-orange-900/10 dark:to-amber-900/10 border border-orange-100 dark:border-orange-500/20 rounded-2xl">
+      <div class="flex items-center gap-2 mb-5">
+        <div class="w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
         </div>
-        <div class="lg:col-span-2 p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
-          <h2 class="font-black uppercase text-sm tracking-tight mb-5">Breakdown by Method</h2>
-          <div id="refundMethodBreak" class="space-y-4"></div>
-        </div>
+        <h2 class="text-sm font-black uppercase tracking-tight">Hospitality Deep Dive</h2>
       </div>
-      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
-        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
-          <h2 class="font-black uppercase text-sm tracking-tight">Refund History</h2>
-          <span class="text-xs text-slate-400" id="rCountLabel">—</span>
+      <div id="hospDeep"></div>
+    </div>
+    <div class="p-6 bg-gradient-to-br from-indigo-50 to-blue-50/60 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-100 dark:border-indigo-500/20 rounded-2xl">
+      <div class="flex items-center gap-2 mb-5">
+        <div class="w-8 h-8 rounded-xl bg-indigo-500 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <tr>
-                <th class="px-4 py-4 text-left">Refund ID</th>
-                <th class="px-4 py-4 text-left">Date</th>
-                <th class="px-4 py-4 text-right">Amount</th>
-                <th class="px-4 py-4 text-left">Method</th>
-                <th class="px-4 py-4 text-left">Status</th>
-                <th class="px-4 py-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody id="refundsBody" class="divide-y dark:divide-darkBorder"></tbody>
-          </table>
-        </div>
+        <h2 class="text-sm font-black uppercase tracking-tight">Retail Deep Dive</h2>
+      </div>
+      <div id="retailDeep"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div class="section p-6 md:p-8" id="section-transactions">
+  <header class="flex justify-between items-start mb-8 gap-4 flex-wrap">
+    <div><h1 class="text-2xl font-black tracking-tight">Transactions</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">All payment records</p></div>
+    <button onclick="exportCSV('payments')" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Export CSV</button>
+  </header>
+  <div class="flex gap-3 mb-5 flex-wrap">
+    <div class="relative flex-1 min-w-[180px]"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input id="txSearch" oninput="filterTx()" placeholder="Search ID, reference…" class="w-full pl-9 pr-4 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-white dark:bg-darkCard dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+    </div>
+    <select id="txStatus" onchange="filterTx()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+      <option value="">All Statuses</option><option value="successful">Successful</option><option value="failed">Failed</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option>
+    </select>
+    <select id="txMethod" onchange="filterTx()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+      <option value="">All Methods</option><option value="card">Card</option><option value="cash">Cash</option><option value="instant_eft">Instant EFT</option>
+    </select>
+  </div>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+    <div class="p-5 border-b dark:border-darkBorder flex justify-between"><h2 class="font-black uppercase text-sm tracking-tight">All Transactions</h2><span id="txCountLabel" class="text-xs text-slate-400">—</span></div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <tr><th class="px-4 py-4 text-left">ID</th><th class="px-4 py-4 text-left">Date / Time</th><th class="px-4 py-4 text-right">Amount</th><th class="px-4 py-4 text-left">Method</th><th class="px-4 py-4 text-left">Status</th><th class="px-4 py-4 text-left">Reference</th><th class="px-4 py-4 text-center">Action</th></tr>
+        </thead>
+        <tbody id="txBody" class="divide-y dark:divide-darkBorder"></tbody>
+      </table>
+    </div>
+    <div id="txPag" class="hidden p-4 border-t dark:border-darkBorder flex justify-between items-center">
+      <button onclick="chTx(-1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+      <span id="txPagLabel" class="text-xs font-black text-slate-400">Page 1 of 1</span>
+      <button onclick="chTx(1)" class="p-2 border dark:border-darkBorder rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYOUTS -->
+<div class="section p-6 md:p-8" id="section-payouts">
+  <header class="flex justify-between items-start mb-8 gap-4">
+    <div><h1 class="text-2xl font-black tracking-tight">Payouts</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Settlement history</p></div>
+    <button onclick="loadPayouts()" class="px-4 py-2.5 bg-white dark:bg-darkCard border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all shadow-sm">&#8635; Reload</button>
+  </header>
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-violet-50/50 dark:from-darkCard dark:to-violet-900/10 border border-violet-100 dark:border-violet-500/20 shadow-sm rounded-2xl"><p class="stat-label">Total Paid Out</p><p class="stat-value text-violet-600 dark:text-violet-400" id="poTotal">—</p></div>
+    <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl"><p class="stat-label">Avg Payout</p><p class="stat-value" id="poAvg">—</p></div>
+    <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl"><p class="stat-label">Count</p><p class="stat-value" id="poCount">—</p></div>
+  </div>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+    <div class="p-5 border-b dark:border-darkBorder flex justify-between"><h2 class="font-black uppercase text-sm tracking-tight">Payout History</h2><span id="poCountLabel" class="text-xs text-slate-400">—</span></div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <tr><th class="px-4 py-4 text-left">Payout ID</th><th class="px-4 py-4 text-left">Date</th><th class="px-4 py-4 text-right">Gross</th><th class="px-4 py-4 text-right">Net</th><th class="px-4 py-4 text-left">Status</th><th class="px-4 py-4 text-center">Action</th></tr>
+        </thead>
+        <tbody id="payoutsBody" class="divide-y dark:divide-darkBorder"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- REFUNDS -->
+<div class="section p-6 md:p-8" id="section-refunds">
+  <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Refunds</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Refund management &amp; history</p></header>
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="kpi-card p-5 bg-gradient-to-br from-white to-rose-50/50 dark:from-darkCard dark:to-rose-900/10 border border-rose-100 dark:border-rose-500/20 shadow-sm rounded-2xl"><p class="stat-label">Total Refunded</p><p class="stat-value text-rose-500" id="rTotal">—</p></div>
+    <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl"><p class="stat-label">Count</p><p class="stat-value" id="rCount">—</p></div>
+    <div class="kpi-card p-5 bg-white dark:bg-darkCard border dark:border-darkBorder shadow-sm rounded-2xl"><p class="stat-label">Avg Refund</p><p class="stat-value" id="rAvg">—</p></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="font-black uppercase text-sm tracking-tight mb-5">Process a Refund</h2>
+      <div class="space-y-4">
+        <div><label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Payment ID</label><input id="refundPaymentId" placeholder="pay_xxxxxxxx" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none font-mono"></div>
+        <div><label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Amount in cents (blank = full)</label><input id="refundAmount" type="number" placeholder="5000 = R50.00" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none"></div>
+        <div><label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Reason</label><input id="refundReason" placeholder="Optional…" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none"></div>
+        <button onclick="createRefund()" class="w-full bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all">Process Refund</button>
       </div>
     </div>
+    <div class="lg:col-span-2 p-6 bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl">
+      <h2 class="font-black uppercase text-sm tracking-tight mb-5">Breakdown by Method</h2>
+      <div id="refundMethodBreak" class="space-y-4"></div>
+    </div>
+  </div>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+    <div class="p-5 border-b dark:border-darkBorder flex justify-between"><h2 class="font-black uppercase text-sm tracking-tight">Refund History</h2><span id="rCountLabel" class="text-xs text-slate-400">—</span></div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <tr><th class="px-4 py-4 text-left">Refund ID</th><th class="px-4 py-4 text-left">Date</th><th class="px-4 py-4 text-right">Amount</th><th class="px-4 py-4 text-left">Method</th><th class="px-4 py-4 text-left">Status</th><th class="px-4 py-4 text-center">Action</th></tr>
+        </thead>
+        <tbody id="refundsBody" class="divide-y dark:divide-darkBorder"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
-    <!-- ═══ ORDERS ═══ -->
-    <div class="section p-6 md:p-8 max-w-[1400px]" id="section-orders">
-      <header class="flex justify-between items-start mb-8 gap-4">
-        <div><h1 class="text-2xl font-black tracking-tight">Orders</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Order management</p></div>
-        <div class="flex gap-3">
-          <select id="orderStatus" onchange="filterOrders()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
-            <option value="">All Statuses</option><option value="open">Open</option><option value="complete">Complete</option><option value="cancelled">Cancelled</option>
-          </select>
-          <button onclick="loadOrders()" class="px-4 py-2.5 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">↺ Reload</button>
+<!-- ORDERS -->
+<div class="section p-6 md:p-8" id="section-orders">
+  <header class="flex justify-between items-start mb-8 gap-4">
+    <div><h1 class="text-2xl font-black tracking-tight">Orders</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Order management</p></div>
+    <div class="flex gap-3">
+      <select id="orderStatus" onchange="filterOrders()" class="bg-white dark:bg-darkCard dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
+        <option value="">All Statuses</option><option value="open">Open</option><option value="complete">Complete</option><option value="cancelled">Cancelled</option>
+      </select>
+      <button onclick="loadOrders()" class="px-4 py-2.5 bg-white dark:bg-darkCard border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all shadow-sm">&#8635; Reload</button>
+    </div>
+  </header>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+    <div class="p-5 border-b dark:border-darkBorder flex justify-between"><h2 class="font-black uppercase text-sm tracking-tight">Orders</h2><span id="ordersCountLabel" class="text-xs text-slate-400">—</span></div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <tr><th class="px-4 py-4 text-left">Order ID</th><th class="px-4 py-4 text-left">Reference</th><th class="px-4 py-4 text-right">Amount</th><th class="px-4 py-4 text-left">Status</th><th class="px-4 py-4 text-left">Date</th><th class="px-4 py-4 text-center">Action</th></tr>
+        </thead>
+        <tbody id="ordersBody" class="divide-y dark:divide-darkBorder"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- RAW QUERY -->
+<div class="section p-6 md:p-8 max-w-4xl" id="section-raw">
+  <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Raw API Query</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Direct Yoco API via corsproxy.io</p></header>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl p-6 space-y-4">
+    <div class="flex gap-3 flex-wrap">
+      <select id="rawMethod" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none"><option>GET</option><option>POST</option></select>
+      <input id="rawEndpoint" value="/v1/payments" class="flex-1 min-w-[200px] px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+      <button onclick="rawQuery()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all">Execute</button>
+    </div>
+    <div><label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Body (POST only)</label>
+      <textarea id="rawBody" rows="3" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-xs bg-slate-50 dark:bg-slate-800 dark:text-white outline-none font-mono resize-y" placeholder='{"key":"value"}'></textarea>
+    </div>
+    <div><label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Response</label>
+      <pre id="rawResponse" class="w-full p-4 border dark:border-darkBorder rounded-xl text-xs bg-slate-950 text-green-400 font-mono overflow-auto leading-relaxed" style="max-height:500px">— execute a query —</pre>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="section p-6 md:p-8 max-w-2xl" id="section-settings">
+  <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Settings</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">API key &amp; business profile</p></header>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden mb-5">
+    <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30"><p class="text-[10px] font-black uppercase tracking-widest text-slate-500">API Connection</p></div>
+    <div class="px-6 py-2">
+      <div class="settings-row">
+        <div><p class="font-bold text-sm">Yoco API Key</p><p class="text-xs text-slate-400 mt-0.5">Never stored in memory — read fresh on every call</p></div>
+        <div class="flex gap-2 items-center">
+          <input type="password" id="apiKeyInput" placeholder="yoco_live_…" class="px-3 py-2 border dark:border-darkBorder rounded-xl text-xs font-mono bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-52">
+          <button onclick="toggleKey()" id="showKeyBtn" class="px-3 py-2 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">Show</button>
         </div>
-      </header>
-      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
-        <div class="p-5 border-b dark:border-darkBorder flex justify-between">
-          <h2 class="font-black uppercase text-sm tracking-tight">Orders</h2>
-          <span id="ordersCountLabel" class="text-xs text-slate-400">—</span>
+      </div>
+      <div class="settings-row">
+        <div><p class="font-bold text-sm">Connection</p><p class="text-xs text-slate-400 mt-0.5">Authenticate and load all data</p></div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2"><span class="status-dot" id="statusDot2"></span><span class="text-xs font-bold text-slate-500" id="statusText2">Not connected</span></div>
+          <button id="connectBtn" onclick="connect()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">Connect</button>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <tr>
-                <th class="px-4 py-4 text-left">Order ID</th>
-                <th class="px-4 py-4 text-left">Reference</th>
-                <th class="px-4 py-4 text-right">Amount</th>
-                <th class="px-4 py-4 text-left">Status</th>
-                <th class="px-4 py-4 text-left">Date</th>
-                <th class="px-4 py-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody id="ordersBody" class="divide-y dark:divide-darkBorder"></tbody>
-          </table>
-        </div>
+      </div>
+      <div class="settings-row">
+        <div><p class="font-bold text-sm">Proxy</p><p class="text-xs text-slate-400 mt-0.5">Enables direct browser API calls</p></div>
+        <span class="text-xs font-mono text-slate-400">corsproxy.io</span>
       </div>
     </div>
-
-    <!-- ═══ RAW QUERY ═══ -->
-    <div class="section p-6 md:p-8 max-w-[900px]" id="section-raw">
-      <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Raw API Query</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Direct Yoco API access via corsproxy.io</p></header>
-      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl p-6 space-y-4">
-        <div class="flex gap-3 flex-wrap">
-          <select id="rawMethod" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2.5 text-xs font-bold outline-none">
-            <option>GET</option><option>POST</option>
-          </select>
-          <input id="rawEndpoint" value="/v1/payments" class="flex-1 min-w-[200px] px-3 py-2.5 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
-          <button onclick="rawQuery()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all">Execute →</button>
-        </div>
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Request Body (POST only)</label>
-          <textarea id="rawBody" rows="3" class="w-full px-3 py-2.5 border dark:border-darkBorder rounded-xl text-xs bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono resize-y" placeholder='{"key":"value"}'></textarea>
-        </div>
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Response</label>
-          <pre id="rawResponse" class="w-full p-4 border dark:border-darkBorder rounded-xl text-xs bg-slate-950 text-green-400 font-mono overflow-auto max-h-[500px] leading-relaxed">— execute a query to see the response —</pre>
-        </div>
+  </div>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden mb-5">
+    <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30"><p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Business Profile</p></div>
+    <div class="px-6 py-2">
+      <div class="settings-row">
+        <div><p class="font-bold text-sm">Business Name</p><p class="text-xs text-slate-400 mt-0.5">Display name</p></div>
+        <input id="bizName" oninput="saveBiz()" placeholder="My Business" class="px-3 py-2 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-44">
+      </div>
+      <div class="settings-row">
+        <div><p class="font-bold text-sm">Business Type</p><p class="text-xs text-slate-400 mt-0.5">Tailors segment analysis</p></div>
+        <select id="bizType" onchange="saveBiz()" class="bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
+          <option value="both">Retail &amp; Hospitality</option><option value="retail">Retail only</option><option value="hospitality">Hospitality only</option>
+        </select>
       </div>
     </div>
-
-    <!-- ═══ SETTINGS ═══ -->
-    <div class="section p-6 md:p-8 max-w-[640px]" id="section-settings">
-      <header class="mb-8"><h1 class="text-2xl font-black tracking-tight">Settings</h1><p class="text-slate-500 dark:text-slate-400 text-sm mt-1">API connection &amp; business profile</p></header>
-
-      <!-- API Connection -->
-      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden mb-5">
-        <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30">
-          <h2 class="font-black uppercase text-xs tracking-widest text-slate-500">API Connection</h2>
-        </div>
-        <div class="px-6 py-2">
-          <div class="settings-row">
-            <div>
-              <p class="font-bold text-sm">Yoco API Key</p>
-              <p class="text-xs text-slate-400 mt-0.5">Never stored — read fresh on every request</p>
-            </div>
-            <div class="flex gap-2 items-center ml-4">
-              <input type="password" id="apiKeyInput" placeholder="yoco_live_…" class="px-3 py-2 border dark:border-darkBorder rounded-xl text-xs font-mono bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-52">
-              <button onclick="toggleKeyVisibility()" class="px-3 py-2 border dark:border-darkBorder rounded-xl text-xs font-bold hover:border-indigo-300 transition-all">Show</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div>
-              <p class="font-bold text-sm">Connect</p>
-              <p class="text-xs text-slate-400 mt-0.5">Test key and load all data</p>
-            </div>
-            <div class="flex items-center gap-3 ml-4">
-              <div class="flex items-center gap-2">
-                <div class="status-dot" id="statusDot2"></div>
-                <span class="text-xs font-bold text-slate-500" id="statusText2">Not connected</span>
-              </div>
-              <button id="connectBtn" onclick="connect()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">Connect</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div><p class="font-bold text-sm">CORS Proxy</p><p class="text-xs text-slate-400 mt-0.5">Enables browser-direct API calls</p></div>
-            <span class="text-xs font-mono text-slate-400 ml-4">corsproxy.io</span>
-          </div>
-        </div>
+  </div>
+  <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
+    <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30"><p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Firebase</p></div>
+    <div class="px-6 py-2">
+      <div class="settings-row">
+        <div><p class="font-bold text-sm">Analytics &amp; Firestore</p><p class="text-xs text-slate-400 mt-0.5">Session tracking</p></div>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 inline-block" id="fbDot2"></span><span class="text-xs text-slate-400" id="fbText2">Loading…</span></div>
       </div>
-
-      <!-- Business Profile -->
-      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden mb-5">
-        <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30">
-          <h2 class="font-black uppercase text-xs tracking-widest text-slate-500">Business Profile</h2>
-        </div>
-        <div class="px-6 py-2">
-          <div class="settings-row">
-            <div><p class="font-bold text-sm">Business Name</p><p class="text-xs text-slate-400 mt-0.5">Shown in report headers</p></div>
-            <input id="bizName" oninput="saveBiz()" placeholder="My Business" class="ml-4 px-3 py-2 border dark:border-darkBorder rounded-xl text-sm bg-slate-50 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none w-44">
-          </div>
-          <div class="settings-row">
-            <div><p class="font-bold text-sm">Business Type</p><p class="text-xs text-slate-400 mt-0.5">Tailors segment analysis</p></div>
-            <select id="bizType" onchange="saveBiz()" class="ml-4 bg-slate-50 dark:bg-slate-800 dark:text-white border dark:border-darkBorder rounded-xl px-3 py-2 text-xs font-bold outline-none">
-              <option value="both">Retail &amp; Hospitality</option>
-              <option value="retail">Retail only</option>
-              <option value="hospitality">Hospitality only</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Firebase -->
-      <div class="bg-white dark:bg-darkCard shadow-sm border dark:border-darkBorder rounded-2xl overflow-hidden">
-        <div class="px-6 py-4 border-b dark:border-darkBorder bg-slate-50/50 dark:bg-slate-800/30">
-          <h2 class="font-black uppercase text-xs tracking-widest text-slate-500">Firebase</h2>
-        </div>
-        <div class="px-6 py-2">
-          <div class="settings-row">
-            <div><p class="font-bold text-sm">Analytics &amp; Firestore</p><p class="text-xs text-slate-400 mt-0.5">Session tracking &amp; snapshot history</p></div>
-            <div class="flex items-center gap-2 ml-4">
-              <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" id="fbDot2"></div>
-              <span class="text-xs text-slate-400" id="fbText2">Loading…</span>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div><p class="font-bold text-sm">Project</p><p class="text-xs text-slate-400 mt-0.5">Connected Firebase project</p></div>
-            <span class="text-xs font-mono text-slate-400 ml-4">yoco-pos-dashbord</span>
-          </div>
-        </div>
+      <div class="settings-row">
+        <div><p class="font-bold text-sm">Project ID</p></div>
+        <span class="text-xs font-mono text-slate-400">yoco-pos-dashbord</span>
       </div>
     </div>
+  </div>
+</div>
 
-  </main>
+</main>
 </div>
 
 <script>
-// ═══════════════════════════════════════
-//  CORE
-// ═══════════════════════════════════════
-const BASE_URL = 'https://corsproxy.io/?url=https://api.yoco.com';
-let connected = false;
-let allData = { payments:[], orders:[], refunds:[], payouts:[] };
-let ledgerFiltered = [], txFiltered = [];
-let ledgerPage = 1, txPage = 1;
-let charts = {};
 
-let biz = JSON.parse(localStorage.getItem('yoco_biz')||'{"name":"","type":"both"}');
+const BASE='https://corsproxy.io/?url=https://api.yoco.com';
+let connected=false,hourlyMode='revenue';
+let allData={payments:[],orders:[],refunds:[],payouts:[]};
+let ledgerFiltered=[],txFiltered=[];
+let ledgerPage=1,txPage=1;
+let CHARTS={};
+let biz=JSON.parse(localStorage.getItem('yoco_biz')||'{"name":"","type":"both"}');
 
-function getKey(){ return document.getElementById('apiKeyInput').value.trim(); }
-function fmt(c){ return 'R\u00a0'+(c/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
-function fmtDate(iso){
-  if(!iso) return '—';
-  const d=new Date(iso);
-  return d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
+// ── UTILS ──
+function getKey(){return document.getElementById('apiKeyInput').value.trim();}
+function fmt(c){return'R\u00a0'+(c/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function fmtD(iso){if(!iso)return'—';const d=new Date(iso);return d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});}
+function fmtT(iso){if(!iso)return'—';return new Date(iso).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});}
+function ga(p){return p.amount?.value??p.amount??0;}
+function gm(p){return p.paymentMethodDetails?.type||p.method||'card';}
+function gs(p){return(p.status||'').toLowerCase();}
+function ok(p){return['successful','succeeded'].includes(gs(p));}
+function pct(a,b){return b?((a/b)*100).toFixed(1)+'%':'0%';}
+function isDark(){return document.documentElement.classList.contains('dark');}
+
+function sBadge(s){
+  const m={successful:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',succeeded:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',failed:'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400',cancelled:'bg-slate-100 dark:bg-slate-700 text-slate-500',pending:'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',open:'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',complete:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'};
+  return`<span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${m[s?.toLowerCase()]||'bg-slate-100 dark:bg-slate-700 text-slate-500'}">${s||'—'}</span>`;
 }
-function fmtTime(iso){ if(!iso)return'—'; return new Date(iso).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}); }
-function getAmt(p){ return p.amount?.value??p.amount??0; }
-function getMethod(p){ return p.paymentMethodDetails?.type||p.method||'card'; }
-function getStatus(p){ return(p.status||'').toLowerCase(); }
-function isSuccess(p){ return['successful','succeeded'].includes(getStatus(p)); }
-function pct(a,b){ return b?((a/b)*100).toFixed(1)+'%':'0%'; }
-
-// Badge helpers matching reference style
-function statusBadge(s){
-  const map={successful:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',succeeded:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',failed:'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400',cancelled:'bg-slate-100 dark:bg-slate-700 text-slate-500',pending:'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',processing:'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',open:'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',complete:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'};
-  return`<span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${map[s?.toLowerCase()]||'bg-slate-100 dark:bg-slate-700 text-slate-500'}">${s||'—'}</span>`;
-}
-function methodBadge(m){
+function mBadge(m){
   const map={card:'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400',cash:'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400',instant_eft:'bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400',gift_voucher:'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'};
   return`<span class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${map[m?.toLowerCase()]||'bg-slate-100 dark:bg-slate-700 text-slate-500'}">${m||'—'}</span>`;
 }
+function viewBtn(obj,label){
+  const safe=JSON.stringify(obj).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  return`<button onclick="openDrawer('${safe}','${label}')" class="text-indigo-500 hover:text-indigo-700 font-bold text-xs px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all">View</button>`;
+}
 
-// ─ TOAST ─
+// ── TOAST ──
 function toast(title,detail,type='info',dur=6000){
   if(['info','success','error'].includes(detail)){type=detail;detail='';}
-  const colors={success:'border-l-4 border-emerald-500',error:'border-l-4 border-rose-500',info:'border-l-4 border-indigo-500'};
-  const icons={success:'✓',error:'✗',info:'ℹ'};
+  const c={success:'border-l-4 border-emerald-500',error:'border-l-4 border-rose-500',info:'border-l-4 border-indigo-500'};
+  const ic={success:'✓',error:'✗',info:'ℹ'};
   const t=document.createElement('div');
-  t.className=`toast bg-white dark:bg-darkCard shadow-lg rounded-xl p-4 ${colors[type]||''} min-w-[240px] max-w-[320px]`;
-  t.innerHTML=`<div class="flex items-center gap-2 font-bold text-sm">${icons[type]||''} ${title}</div>${detail?`<div class="text-xs text-slate-400 mt-1">${detail}</div>`:''}`;
+  t.className=`toast-item bg-white dark:bg-darkCard shadow-lg rounded-xl p-4 ${c[type]||''} min-w-[240px] max-w-[340px] pointer-events-auto`;
+  t.innerHTML=`<div class="font-bold text-sm">${ic[type]||''}&nbsp;&nbsp;${title}</div>${detail?`<div class="text-xs text-slate-400 mt-1">${detail}</div>`:''}`;
   document.getElementById('toastContainer').appendChild(t);
   setTimeout(()=>t.remove(),dur);
 }
 
-// ─ THEME ─
+// ── THEME ──
 function toggleTheme(){
-  const html=document.documentElement;
-  if(html.classList.contains('dark')){html.classList.replace('dark','light');localStorage.theme='light';}
-  else{html.classList.replace('light','dark');localStorage.theme='dark';}
-  setTimeout(()=>{ Object.values(charts).forEach(c=>{if(c)c.destroy();}); charts={}; renderOverview(); renderSales(); },100);
+  const h=document.documentElement;
+  if(h.classList.contains('dark')){h.classList.replace('dark','light');localStorage.theme='light';}
+  else{h.classList.replace('light','dark');localStorage.theme='dark';}
+  setTimeout(()=>{Object.keys(CHARTS).forEach(k=>{if(CHARTS[k]){CHARTS[k].destroy();CHARTS[k]=null;}});if(connected){renderOverview();renderSales();}},150);
 }
 
-// ─ NAV ─
-const pageTitles={overview:'Dashboard',sales:'Sales Report',transactions:'Transactions',payouts:'Payouts',refunds:'Refunds',orders:'Orders',raw:'Raw Query',settings:'Settings'};
+// ── NAV ──
+const SECTIONS=['overview','sales','insights','transactions','payouts','refunds','orders','raw','settings'];
 function showSection(id){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
-  document.getElementById('section-'+id).classList.add('active');
-  document.querySelector(`[data-section="${id}"]`)?.classList.add('active');
+  SECTIONS.forEach(s=>{
+    const el=document.getElementById('section-'+s);
+    const nav=document.getElementById('nav-'+s);
+    if(el){el.classList.remove('active');if(s===id)el.classList.add('active');}
+    if(nav){nav.classList.remove('active');if(s===id)nav.classList.add('active');}
+  });
   if(connected){
     if(id==='transactions'&&!allData.payments.length)loadPayments();
     if(id==='orders'&&!allData.orders.length)loadOrders();
     if(id==='refunds'&&!allData.refunds.length)loadRefunds();
     if(id==='payouts'&&!allData.payouts.length)loadPayouts();
+    if(id==='sales'){renderSales();}
   }
+  if(id==='insights'){renderIndustryInsights();}
 }
 
-// ─ KEY ─
-function toggleKeyVisibility(){
+// ── KEY ──
+function toggleKey(){
   const i=document.getElementById('apiKeyInput');
   i.type=i.type==='password'?'text':'password';
-  event.target.textContent=i.type==='password'?'Show':'Hide';
+  document.getElementById('showKeyBtn').textContent=i.type==='password'?'Show':'Hide';
 }
 
-// ─ BIZ ─
-function saveBiz(){
-  biz.name=document.getElementById('bizName')?.value||'';
-  biz.type=document.getElementById('bizType')?.value||'both';
-  localStorage.setItem('yoco_biz',JSON.stringify(biz));
-}
-function loadBiz(){
-  if(document.getElementById('bizName'))document.getElementById('bizName').value=biz.name||'';
-  if(document.getElementById('bizType'))document.getElementById('bizType').value=biz.type||'both';
-}
+// ── BIZ ──
+function saveBiz(){biz.name=document.getElementById('bizName')?.value||'';biz.type=document.getElementById('bizType')?.value||'both';localStorage.setItem('yoco_biz',JSON.stringify(biz));}
+function loadBiz(){if(document.getElementById('bizName'))document.getElementById('bizName').value=biz.name||'';if(document.getElementById('bizType'))document.getElementById('bizType').value=biz.type||'both';}
 
-// ═══════════════════════════════════════
-//  API
-// ═══════════════════════════════════════
+// ── API ──
 function parseErr(status,body,fe){
-  if(fe)return{title:'Network Error',detail:'Could not reach Yoco via proxy. ('+(fe.message||'')+')',hint:''};
-  const msgs={401:'Unauthorised — check your API key.',403:'Forbidden — key lacks permission.',404:'Not found.',429:'Rate limited — wait and retry.',500:'Yoco server error.'};
+  if(fe)return{title:'Network Error',detail:'Could not reach Yoco via proxy. ('+(fe.message||'')+')'};
+  const msgs={401:'Unauthorised — check your API key in the Yoco Developer Portal.',403:'Forbidden — key lacks permission.',404:'Not found.',429:'Rate limited — wait and retry.',500:'Yoco server error.'};
   const bm=body?.message||body?.error||'';
   return{title:'Error '+status,detail:(msgs[status]||'HTTP '+status)+(bm?' — '+bm:''),hint:status===401?'Live keys start with yoco_live_':''};
 }
-
-async function yocoFetch(path,method='GET',body=null){
+async function apiFetch(path,method='GET',body=null){
   const key=getKey();
   if(!key)throw Object.assign(new Error('No key'),{uiError:{title:'No API Key',detail:'Enter your key in Settings.',hint:''}});
   const headers={'Authorization':'Bearer '+key};
   if(body)headers['Content-Type']='application/json';
   let res,rb;
-  try{ res=await fetch(BASE_URL+path,{method,headers,body:body?JSON.stringify(body):undefined}); }
-  catch(fe){ throw Object.assign(fe,{uiError:parseErr(null,null,fe)}); }
+  try{res=await fetch(BASE+path,{method,headers,body:body?JSON.stringify(body):undefined});}
+  catch(fe){throw Object.assign(fe,{uiError:parseErr(null,null,fe)});}
   try{rb=await res.json();}catch(_){rb={};}
-  if(!res.ok){const e=new Error('err');e.uiError=parseErr(res.status,rb,null);e.status=res.status;throw e;}
+  if(!res.ok){const e=new Error('err');e.uiError=parseErr(res.status,rb,null);throw e;}
   return rb;
 }
 
-// ═══════════════════════════════════════
-//  CONNECT
-// ═══════════════════════════════════════
+// ── STATUS ──
 function setStatus(s){
-  const states={connecting:'connecting',live:'live',error:'error'};
-  const labels={connecting:'Connecting…',live:'Connected',error:'Error',disconnected:'Not connected'};
-  ['statusDot','statusDot2'].forEach(id=>{
-    const el=document.getElementById(id); if(!el)return;
-    el.className='status-dot'+(states[s]?' '+states[s]:'');
-  });
-  ['statusText','statusText2'].forEach(id=>{
-    const el=document.getElementById(id); if(el)el.textContent=labels[s]||s;
-  });
+  const cls={connecting:'connecting',live:'live',error:'error'};
+  const lbl={connecting:'Connecting…',live:'Connected',error:'Error',off:'Not connected'};
+  ['statusDot','statusDot2'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='status-dot'+(cls[s]?' '+cls[s]:'');});
+  ['statusText','statusText2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=lbl[s]||s;});
 }
 
+// ── CONNECT ──
 async function connect(){
   if(!getKey()){toast('No API key','Enter your key in Settings first','error');showSection('settings');return;}
   const btn=document.getElementById('connectBtn');
   if(btn){btn.textContent='…';btn.disabled=true;}
   setStatus('connecting');
   try{
-    await yocoFetch('/v1/payments?count=1');
-    connected=true; setStatus('live');
-    if(btn){btn.textContent='✓ Connected';btn.disabled=false;}
+    await apiFetch('/v1/payments?count=1');
+    connected=true;setStatus('live');
+    if(btn){btn.textContent='Connected';btn.disabled=false;}
     document.getElementById('lastRefreshed').textContent='Updated '+new Date().toLocaleTimeString('en-ZA');
     await Promise.all([loadPayments(true),loadOrders(true),loadRefunds(true),loadPayouts(true)]);
-    renderOverview(); renderSales();
+    renderOverview();
     toast('Connected','Live data loaded from Yoco','success');
-    if(window._fb){
-      window._fb.track('yoco_connect_success',{key_prefix:getKey().substring(0,12)});
-      window._fb.saveSession('success',getKey().substring(0,12));
-      window._fb.saveSnapshot({payments:allData.payments.length,orders:allData.orders.length,refunds:allData.refunds.length,payouts:allData.payouts.length});
-    }
+    if(window._fb){window._fb.track('connect_success');window._fb.save('sessions',{status:'success',keyPrefix:getKey().substring(0,12)});}
   }catch(e){
-    connected=false; setStatus('error');
+    connected=false;setStatus('error');
     if(btn){btn.textContent='Connect';btn.disabled=false;}
-    const err=e.uiError||{title:'Connection Failed',detail:e.message,hint:''};
+    const err=e.uiError||{title:'Connection Failed',detail:e.message};
     toast(err.title,[err.detail,err.hint].filter(Boolean).join(' — '),'error',10000);
-    if(window._fb)window._fb.saveSession('error',getKey().substring(0,12));
   }
 }
 
 async function refreshAll(){
   if(!connected){toast('Not connected','Go to Settings','error');return;}
   await Promise.all([loadPayments(true),loadOrders(true),loadRefunds(true),loadPayouts(true)]);
-  renderOverview(); renderSales();
+  renderOverview();renderSales();renderIndustryInsights();
   document.getElementById('lastRefreshed').textContent='Updated '+new Date().toLocaleTimeString('en-ZA');
   toast('Refreshed','','success',3000);
 }
 
-// ═══════════════════════════════════════
-//  LOADERS
-// ═══════════════════════════════════════
+// ── LOADERS ──
 async function loadPayments(silent=false){
-  try{
-    const d=await yocoFetch('/v1/payments?count=200');
-    allData.payments=d.payments||d.data||(Array.isArray(d)?d:[]);
-    renderTxTable(); renderLedger();
-  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
+  try{const d=await apiFetch('/v1/payments?count=200');allData.payments=d.payments||d.data||(Array.isArray(d)?d:[]);renderTxTable();renderLedger();}
+  catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
 async function loadOrders(silent=false){
-  try{
-    const d=await yocoFetch('/v1/orders?count=200');
-    allData.orders=d.orders||d.data||(Array.isArray(d)?d:[]);
-    renderOrdersTable();
-  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
+  try{const d=await apiFetch('/v1/orders?count=200');allData.orders=d.orders||d.data||(Array.isArray(d)?d:[]);renderOrdersTable();}
+  catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
 async function loadRefunds(silent=false){
-  try{
-    const d=await yocoFetch('/v1/refunds?count=200');
-    allData.refunds=d.refunds||d.data||(Array.isArray(d)?d:[]);
-    renderRefundsSection();
-  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
+  try{const d=await apiFetch('/v1/refunds?count=200');allData.refunds=d.refunds||d.data||(Array.isArray(d)?d:[]);renderRefundsSection();}
+  catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
 async function loadPayouts(silent=false){
-  try{
-    const d=await yocoFetch('/v1/payouts?count=200');
-    allData.payouts=d.payouts||d.data||(Array.isArray(d)?d:[]);
-    renderPayoutsSection();
-  }catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
+  try{const d=await apiFetch('/v1/payouts?count=200');allData.payouts=d.payouts||d.data||(Array.isArray(d)?d:[]);renderPayoutsSection();}
+  catch(e){if(!silent){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}throw e;}
 }
 
-// ═══════════════════════════════════════
-//  OVERVIEW
-// ═══════════════════════════════════════
+// ── CHARTS ──
+function cDef(){return{tc:isDark()?'#94a3b8':'#64748b',gc:isDark()?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)'};}
+function mkChart(id,cfg){if(CHARTS[id])CHARTS[id].destroy();const ctx=document.getElementById(id)?.getContext('2d');if(!ctx)return null;CHARTS[id]=new Chart(ctx,cfg);return CHARTS[id];}
+
+function renderHourly(){
+  const succ=allData.payments.filter(ok);
+  const hrs=Array.from({length:24},(_,i)=>({r:0,v:0}));
+  succ.forEach(p=>{const h=new Date(p.created_at||p.createdAt||0).getHours();hrs[h].r+=ga(p);hrs[h].v++;});
+  const d=cDef(),isR=hourlyMode==='revenue';
+  mkChart('hourlyChart',{type:'bar',data:{labels:Array.from({length:24},(_,i)=>i.toString().padStart(2,'0')+'h'),datasets:[{label:isR?'Revenue':'Volume',data:hrs.map(h=>isR?h.r/100:h.v),backgroundColor:'rgba(99,102,241,0.75)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:d.tc,font:{size:9}},grid:{color:d.gc}},y:{ticks:{color:d.tc,font:{size:10},callback:v=>isR?'R'+v:''+v},grid:{color:d.gc}}}}});
+}
+function setHourlyMode(m){
+  hourlyMode=m;
+  document.getElementById('btnHR').className='px-3 py-1.5 rounded-lg text-[10px] font-bold border '+(m==='revenue'?'border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400':'border dark:border-darkBorder text-slate-400 bg-transparent');
+  document.getElementById('btnHV').className='px-3 py-1.5 rounded-lg text-[10px] font-bold border '+(m==='volume'?'border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400':'dark:border-darkBorder text-slate-400 bg-transparent');
+  renderHourly();
+}
+function renderDaily(){
+  const succ=allData.payments.filter(ok),bd={};
+  succ.forEach(p=>{const dt=(p.created_at||p.createdAt||'').substring(0,10);if(dt)bd[dt]=(bd[dt]||0)+ga(p);});
+  const dates=Object.keys(bd).sort().slice(-14),d=cDef();
+  mkChart('dailyChart',{type:'line',data:{labels:dates.map(dt=>new Date(dt+'T12:00').toLocaleDateString('en-ZA',{day:'2-digit',month:'short'})),datasets:[{data:dates.map(dt=>bd[dt]/100),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:'#6366f1'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:d.tc,font:{size:9}},grid:{color:d.gc}},y:{ticks:{color:d.tc,callback:v=>'R'+v},grid:{color:d.gc}}}}});
+}
+function renderDow(canvasId='dowChart'){
+  const succ=allData.payments.filter(ok),vals=new Array(7).fill(0);
+  succ.forEach(p=>{vals[new Date(p.created_at||p.createdAt||0).getDay()]+=ga(p);});
+  const today=new Date().getDay(),d=cDef();
+  mkChart(canvasId,{type:'bar',data:{labels:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],datasets:[{data:vals.map(v=>v/100),backgroundColor:vals.map((_,i)=>i===today?'rgba(99,102,241,0.9)':'rgba(99,102,241,0.3)'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:d.tc,font:{size:9}},grid:{display:false}},y:{display:false}}}});
+}
+
+// ── OVERVIEW ──
 function renderOverview(){
-  const pays=allData.payments;
-  const succ=pays.filter(isSuccess);
-  const gross=succ.reduce((s,p)=>s+getAmt(p),0);
-  const v
+  const pays=allData.payments,succ=pays.filter(ok);
+  const gross=succ.reduce((s,p)=>s+ga(p),0);
+  const vat=Math.round(gross*(15/115));
+  const refTotal=allData.refunds.reduce((s,r)=>s+ga(r),0);
+  const net=gross-refTotal;
+  const avg=succ.length?Math.round(gross/succ.length):0;
+  const poTotal=allData.payouts.reduce((s,p)=>s+ga(p),0);
+  const sRate=pays.length?Math.round(succ.length/pays.length*100):0;
+
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  const hb=Array.from({length:24},()=>({r:0,v:0}));
+  succ.forEach(p=>{const h=new Date(p.created_at||p.createdAt||0).getHours();hb[h].r+=ga(p);hb[h].v++;});
+  const peakHObj=hb.reduce((a,b)=>b.r>a.r?b:a,{r:0,v:0});
+  const peakHIdx=hb.indexOf(peakHObj);
+  const db2={};succ.forEach(p=>{const dt=(p.created_at||p.createdAt||'').substring(0,10);if(dt){if(!db2[dt])db2[dt]={r:0,v:0};db2[dt].r+=ga(p);db2[dt].v++;}});
+  const dts=Object.keys(db2);
+  const bestDt=dts.length?dts.reduce((a,b)=>db2[a].r>db2[b].r?a:b):'';
+
+  set('kpiGross',fmt(gross));set('kpiTxCount',succ.length+' transactions');
+  set('kpiVAT',fmt(vat));set('kpiAvg',fmt(avg));
+  set('kpiRefunds',fmt(refTotal));set('kpiRefundCount',allData.refunds.length+' refunds');
+  set('kpiSuccessRate',sRate+'%');
+  set('kpiPayouts',fmt(poTotal));set('kpiPayoutCount',allData.payouts.length+' payouts');
+  set('kpiNet',fmt(net));set('effAvg',fmt(avg));set('effNet',fmt(net));
+  set('kpiPeakHour',peakHIdx>=0?peakHIdx.toString().padStart(2,'0')+':00':'—');
+  set('kpiPeakHourRev',peakHObj.r?fmt(peakHObj.r)+' · '+peakHObj.v+' txn':'Highest revenue hour');
+  set('kpiBestDay',bestDt?new Date(bestDt+'T12:00').toLocaleDateString('en-ZA',{weekday:'short',day:'2-digit',month:'short'}):'—');
+  set('kpiBestDayRev',bestDt?fmt(db2[bestDt].r)+' · '+db2[bestDt].v+' txn':'Highest single day');
+  set('kpiRefundRate',gross?((refTotal/gross)*100).toFixed(1)+'%':'0%');
+
+  renderHourly();renderDaily();renderDow();
+  renderMethodTable();renderSegment();renderPeak();renderToday();
+}
+
+function renderMethodTable(){
+  const succ=allData.payments.filter(ok),bm={};
+  succ.forEach(p=>{const m=gm(p);if(!bm[m])bm[m]={v:0,r:0};bm[m].v++;bm[m].r+=ga(p);});
+  const tot=Object.values(bm).reduce((s,v)=>s+v.r,0)||1;
+  document.getElementById('methodTable').innerHTML=Object.entries(bm).sort((a,b)=>b[1].r-a[1].r).map(([m,v])=>
+    `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"><td class="px-0 py-3">${mBadge(m)}</td><td class="py-3 text-right font-bold">${v.v}</td><td class="py-3 text-right font-black">${fmt(v.r)}</td><td class="py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${pct(v.r,tot)}</td></tr>`
+  ).join('');
+}
+
+function renderSegment(){
+  const succ=allData.payments.filter(ok);
+  const h=succ.filter(p=>ga(p)<=15000),r=succ.filter(p=>ga(p)>15000);
+  const hR=h.reduce((s,p)=>s+ga(p),0),rR=r.reduce((s,p)=>s+ga(p),0),tot=hR+rR||1;
+  document.getElementById('segmentBars').innerHTML=`
+    <div class="space-y-1"><div class="flex justify-between text-xs font-bold"><span>Hospitality (under R150)</span><span class="font-mono">${fmt(hR)}</span></div>
+    <div class="method-bar-track"><div class="method-bar-fill bg-orange-400" style="width:${Math.round(hR/tot*100)}%"></div></div>
+    <div class="text-[10px] text-slate-400">${h.length} txn &middot; avg ${h.length?fmt(Math.round(hR/h.length)):'—'}</div></div>
+    <div class="space-y-1"><div class="flex justify-between text-xs font-bold"><span>Retail (over R150)</span><span class="font-mono">${fmt(rR)}</span></div>
+    <div class="method-bar-track"><div class="method-bar-fill bg-indigo-500" style="width:${Math.round(rR/tot*100)}%"></div></div>
+    <div class="text-[10px] text-slate-400">${r.length} txn &middot; avg ${r.length?fmt(Math.round(rR/r.length)):'—'}</div></div>`;
+}
+
+function renderPeak(){
+  const succ=allData.payments.filter(ok);
+  const blocks=Array.from({length:12},(_,i)=>{let v=0;succ.forEach(p=>{const h=new Date(p.created_at||p.createdAt||0).getHours();if(h===i*2||h===i*2+1)v++;});return v;});
+  const mx=Math.max(...blocks,1);
+  document.getElementById('peakGrid').innerHTML=blocks.map((v,i)=>{
+    const pct2=Math.round(v/mx*100);
+    const bg=pct2>70?'bg-indigo-600':pct2>40?'bg-indigo-400':pct2>10?'bg-indigo-200 dark:bg-indigo-800':'bg-slate-100 dark:bg-slate-700';
+    return`<div class="h-8 rounded-lg ${bg} flex items-center justify-center cursor-default" title="${i*2}:00 - ${i*2+2}:00 — ${v} txn"><span class="text-[8px] font-black text-white/80">${v||''}</span></div>`;
+  }).join('');
+  document.getElementById('peakLabels').innerHTML=blocks.map((_,i)=>`<div class="text-[8px] font-bold text-center text-slate-400">${(i*2).toString().padStart(2,'0')}h</div>`).join('');
+}
+
+function renderToday(){
+  const today=new Date().toISOString().substring(0,10);
+  const rows=allData.payments.filter(p=>(p.created_at||p.createdAt||'').startsWith(today));
+  const rev=rows.filter(ok).reduce((s,p)=>s+ga(p),0);
+  document.getElementById('todayMeta').textContent=rows.length+' transactions today  ·  '+fmt(rev);
+  document.getElementById('todayBody').innerHTML=rows.length?rows.slice(0,30).map(p=>`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+    <td class="px-4 py-3 text-slate-400 text-xs">${fmtT(p.created_at||p.createdAt)}</td>
+    <td class="px-4 py-3 font-black text-indigo-600 dark:text-indigo-400">${fmt(ga(p))}</td>
+    <td class="px-4 py-3">${mBadge(gm(p))}</td>
+    <td class="px-4 py-3">${sBadge(p.status)}</td>
+    <td class="px-4 py-3 font-mono text-xs text-slate-400">${p.externalReference||'—'}</td>
+  </tr>`).join(''):`<tr><td colspan="5" class="px-4 py-12 text-center text-slate-400 text-sm">No transactions today yet</td></tr>`;
+}
+
+// ── SALES ──
+function renderSales(){
+  const succ=allData.payments.filter(ok);
+  const gross=succ.reduce((s,p)=>s+ga(p),0);
+  const vat=Math.round(gross*(15/115));
+  const refTotal=allData.refunds.reduce((s,r)=>s+ga(r),0);
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('sGross',fmt(gross));set('sTxCount',succ.length+' transactions');
+  set('sVAT',fmt(vat));set('sRefunds',fmt(refTotal));
+  set('sRefundCount',allData.refunds.length+' refunds');set('sNet',fmt(gross-refTotal));
+
+  renderDow('salesDowChart');
+
+  const bands=[{l:'Under R50',min:0,max:5000,c:'bg-indigo-400'},{l:'R50 – R200',min:5000,max:20000,c:'bg-violet-400'},{l:'R200 – R500',min:20000,max:50000,c:'bg-emerald-400'},{l:'R500 – R1k',min:50000,max:100000,c:'bg-orange-400'},{l:'Over R1k',min:100000,max:Infinity,c:'bg-rose-400'}];
+  const bc=bands.map(b=>succ.filter(p=>ga(p)>=b.min&&ga(p)<b.max).length);
+  const mx=Math.max(...bc,1);
+  document.getElementById('salesSizeBands').innerHTML=bands.map((b,i)=>`
+    <div><div class="flex justify-between text-xs font-bold mb-1"><span>${b.l}</span><span class="font-mono text-slate-500">${bc[i]} txn</span></div>
+    <div class="method-bar-track"><div class="method-bar-fill ${b.c}" style="width:${Math.round(bc[i]/mx*100)}%"></div></div></div>`).join('');
+
+  const bm={};succ.forEach(p=>{const m=gm(p);if(!bm[m])bm[m]={v:0,r:0};bm[m].v++;bm[m].r+=ga(p);});
+  const tot=Object.values(bm).reduce((s,v)=>s+v.r,0)||1;
+  const mc={card:'bg-indigo-400',cash:'bg-emerald-400',instant_eft:'bg-violet-400',gift_voucher:'bg-orange-400'};
+  document.getElementById('salesMethodTable').innerHTML=Object.entries(bm).sort((a,b)=>b[1].r-a[1].r).map(([m,v])=>`
+    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+      <td class="px-4 py-4">${mBadge(m)}</td><td class="px-4 py-4 text-right font-black">${v.v}</td>
+      <td class="px-4 py-4 text-right font-black">${fmt(v.r)}</td>
+      <td class="px-4 py-4 text-right font-bold text-indigo-600 dark:text-indigo-400">${pct(v.r,tot)}</td>
+      <td class="px-4 py-4 pl-6"><div class="method-bar-track w-32"><div class="method-bar-fill ${mc[m]||'bg-slate-400'}" style="width:${Math.round(v.r/tot*100)}%"></div></div></td>
+    </tr>`).join('');
+  renderLedger();
+}
+
+// LEDGER
+function filterLedger(){
+  const q=document.getElementById('ledgerSearch').value.toLowerCase();
+  const m=document.getElementById('ledgerMethod').value.toLowerCase();
+  const s=document.getElementById('ledgerStatus').value.toLowerCase();
+  ledgerFiltered=allData.payments.filter(p=>(!q||JSON.stringify(p).toLowerCase().includes(q))&&(!m||gm(p).toLowerCase().includes(m))&&(!s||gs(p)===s));
+  ledgerPage=1;renderLedger();
+}
+function renderLedger(){
+  if(!ledgerFiltered.length)ledgerFiltered=[...allData.payments];
+  const rows=ledgerFiltered,per=parseInt(document.getElementById('ledgerRows')?.value||'25'),tot=Math.ceil(rows.length/per),slice=rows.slice((ledgerPage-1)*per,ledgerPage*per);
+  document.getElementById('ledgerCount').textContent=rows.length+' transactions';
+  const pg=slice.reduce((s,p)=>s+ga(p),0),pv=Math.round(pg*(15/115));
+  if(slice.length){document.getElementById('ledgerTotals').classList.remove('hidden');document.getElementById('pgGross').textContent=fmt(pg);document.getElementById('pgVAT').textContent=fmt(pv);document.getElementById('pgNet').textContent=fmt(pg-pv);}
+  document.getElementById('ledgerBody').innerHTML=slice.length?slice.map((p,i)=>{
+    const g=ga(p),v=Math.round(g*(15/115));
+    return`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+      <td class="px-4 py-3 text-xs text-slate-400">${(ledgerPage-1)*per+i+1}</td>
+      <td class="px-4 py-3 text-xs text-slate-500">${fmtD(p.created_at||p.createdAt)}</td>
+      <td class="px-4 py-3">${mBadge(gm(p))}</td>
+      <td class="px-4 py-3 text-right font-black text-indigo-600 dark:text-indigo-400">${fmt(g)}</td>
+      <td class="px-4 py-3 text-right font-bold text-amber-600 dark:text-amber-400">${fmt(v)}</td>
+      <td class="px-4 py-3 text-right font-black">${fmt(g-v)}</td>
+      <td class="px-4 py-3">${sBadge(p.status)}</td>
+      <td class="px-4 py-3 font-mono text-xs text-slate-400">${p.externalReference||'—'}</td>
+      <td class="px-4 py-3 text-center">${viewBtn(p,'Payment')}</td></tr>`;
+  }).join(''):`<tr><td colspan="9" class="px-4 py-12 text-center text-slate-400">No data</td></tr>`;
+  if(tot>1){document.getElementById('ledgerPag').classList.remove('hidden');document.getElementById('ledgerPagLabel').textContent='Page '+ledgerPage+' of '+tot;}
+  else document.getElementById('ledgerPag').classList.add('hidden');
+}
+function chLedger(d){const per=parseInt(document.getElementById('ledgerRows')?.value||'25'),tot=Math.ceil(ledgerFiltered.length/per);ledgerPage=Math.max(1,Math.min(tot,ledgerPage+d));renderLedger();}
+
+// TRANSACTIONS
+function filterTx(){
+  const q=document.getElementById('txSearch').value.toLowerCase();
+  const s=document.getElementById('txStatus').value.toLowerCase();
+  const m=document.getElementById('txMethod').value.toLowerCase();
+  txFiltered=allData.payments.filter(p=>(!q||JSON.stringify(p).toLowerCase().includes(q))&&(!s||gs(p)===s)&&(!m||gm(p).toLowerCase().includes(m)));
+  txPage=1;renderTxTable();
+}
+function renderTxTable(){
+  if(!txFiltered.length)txFiltered=[...allData.payments];
+  const rows=txFiltered,PER=25,tot=Math.ceil(rows.length/PER),slice=rows.slice((txPage-1)*PER,txPage*PER);
+  document.getElementById('txCountLabel').textContent=rows.length+' transactions';
+  document.getElementById('txBody').innerHTML=slice.length?slice.map(p=>`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+    <td class="px-4 py-3 font-mono text-xs text-slate-400">${(p.id||'').substring(0,18)}…</td>
+    <td class="px-4 py-3 text-xs text-slate-500">${fmtD(p.created_at||p.createdAt)}</td>
+    <td class="px-4 py-3 text-right font-black text-indigo-600 dark:text-indigo-400">${fmt(ga(p))}</td>
+    <td class="px-4 py-3">${mBadge(gm(p))}</td>
+    <td class="px-4 py-3">${sBadge(p.status)}</td>
+    <td class="px-4 py-3 font-mono text-xs text-slate-400">${p.externalReference||'—'}</td>
+    <td class="px-4 py-3 text-center">${viewBtn(p,'Transaction')}</td></tr>`).join(''):`<tr><td colspan="7" class="px-4 py-12 text-center text-slate-400">No data</td></tr>`;
+  if(tot>1){document.getElementById('txPag').classList.remove('hidden');document.getElementById('txPagLabel').textContent='Page '+txPage+' of '+tot;}
+  else document.getElementById('txPag').classList.add('hidden');
+}
+function chTx(d){const tot=Math.ceil(txFiltered.length/25);txPage=Math.max(1,Math.min(tot,txPage+d));renderTxTable();}
+
+// PAYOUTS
+function renderPayoutsSection(){
+  const rows=allData.payouts,tot=rows.reduce((s,p)=>s+ga(p),0);
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('poTotal',fmt(tot));set('poAvg',rows.length?fmt(Math.round(tot/rows.length)):'—');set('poCount',rows.length);set('poCountLabel',rows.length+' payouts');
+  document.getElementById('payoutsBody').innerHTML=rows.length?rows.map(p=>`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+    <td class="px-4 py-3 font-mono text-xs text-slate-400">${(p.id||'').substring(0,20)}…</td>
+    <td class="px-4 py-3 text-xs text-slate-500">${fmtD(p.created_at||p.settledAt)}</td>
+    <td class="px-4 py-3 text-right font-black text-violet-600 dark:text-violet-400">${fmt(p.grossAmount?.value||ga(p))}</td>
+    <td class="px-4 py-3 text-right font-black text-emerald-600 dark:text-emerald-400">${fmt(p.netAmount?.value||0)}</td>
+    <td class="px-4 py-3">${sBadge(p.status)}</td>
+    <td class="px-4 py-3 text-center">${viewBtn(p,'Payout')}</td></tr>`).join(''):`<tr><td colspan="6" class="px-4 py-12 text-center text-slate-400">No payouts loaded</td></tr>`;
+}
+
+// REFUNDS
+function renderRefundsSection(){
+  const rows=allData.refunds,tot=rows.reduce((s,r)=>s+ga(r),0);
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('rTotal',fmt(tot));set('rCount',rows.length);set('rAvg',rows.length?fmt(Math.round(tot/rows.length)):'—');set('rCountLabel',rows.length+' refunds');
+  const bm={};rows.forEach(r=>{const m=r.refundMethod||r.method||'card';if(!bm[m])bm[m]=0;bm[m]+=ga(r);});
+  const mx=Math.max(...Object.values(bm),1);
+  document.getElementById('refundMethodBreak').innerHTML=Object.entries(bm).sort((a,b)=>b[1]-a[1]).map(([m,v])=>`
+    <div><div class="flex justify-between text-sm font-bold mb-1"><span>${mBadge(m)}</span><span class="font-mono text-rose-500">${fmt(v)}</span></div>
+    <div class="method-bar-track"><div class="method-bar-fill bg-rose-400" style="width:${Math.round(v/mx*100)}%"></div></div></div>`).join('')||'<p class="text-sm text-slate-400">No refunds yet</p>';
+  document.getElementById('refundsBody').innerHTML=rows.length?rows.map(r=>`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+    <td class="px-4 py-3 font-mono text-xs text-slate-400">${(r.id||'').substring(0,20)}…</td>
+    <td class="px-4 py-3 text-xs text-slate-500">${fmtD(r.processedAt||r.created_at)}</td>
+    <td class="px-4 py-3 text-right font-black text-rose-500">${fmt(ga(r))}</td>
+    <td class="px-4 py-3">${mBadge(r.refundMethod||r.method)}</td>
+    <td class="px-4 py-3">${sBadge(r.status)}</td>
+    <td class="px-4 py-3 text-center">${viewBtn(r,'Refund')}</td></tr>`).join(''):`<tr><td colspan="6" class="px-4 py-12 text-center text-slate-400">No refunds</td></tr>`;
+}
+async function createRefund(){
+  const pid=document.getElementById('refundPaymentId').value.trim();
+  const amt=document.getElementById('refundAmount').value;
+  const reason=document.getElementById('refundReason').value.trim();
+  if(!pid){toast('Payment ID required','','error');return;}
+  const body={paymentReference:pid};
+  if(amt)body.amount={value:parseInt(amt),currencyCode:'ZAR'};
+  if(reason)body.reason=reason;
+  try{const r=await apiFetch('/v1/refunds','POST',body);toast('Refund created','ID: '+(r.id||'—'),'success');await loadRefunds();}
+  catch(e){const err=e.uiError||{title:e.message};toast(err.title,err.detail||'','error');}
+}
+
+// ORDERS
+function renderOrdersTable(data){
+  const rows=data||allData.orders;
+  document.getElementById('ordersCountLabel').textContent=rows.length+' orders';
+  document.getElementById('ordersBody').innerHTML=rows.length?rows.map(o=>`<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+    <td class="px-4 py-3 font-mono text-xs text-slate-400">${(o.id||'').substring(0,20)}…</td>
+    <td class="px-4 py-3 font-bold">${o.humanReference||o.human_reference||'—'}</td>
+    <td class="px-4 py-3 text-right font-black text-indigo-600 dark:text-indigo-400">${fmt(o.totalAmount?.value||ga(o))}</td>
+    <td class="px-4 py-3">${sBadge(o.status)}</td>
+    <td class="px-4 py-3 text-xs text-slate-500">${fmtD(o.created_at||o.createdAt)}</td>
+    <td class="px-4 py-3 text-center">${viewBtn(o,'Order')}</td></tr>`).join(''):`<tr><td colspan="6" class="px-4 py-12 text-center text-slate-400">No orders</td></tr>`;
+}
+function filterOrders(){const s=document.getElementById('orderStatus').value.toLowerCase();renderOrdersTable(allData.orders.filter(o=>!s||(o.status||'').toLowerCase()===s));}
+
+// RAW QUERY
+async function rawQuery(){
+  const method=document.getElementById('rawMethod').value,ep=document.getElementById('rawEndpoint').value.trim(),bodyStr=document.getElementById('rawBody').value.trim();
+  let body=null;if(bodyStr){try{body=JSON.parse(bodyStr);}catch(e){toast('Invalid JSON','','error');return;}}
+  document.getElementById('rawResponse').textContent='Loading…';
+  try{const d=await apiFetch(ep,method,body);document.getElementById('rawResponse').textContent=JSON.stringify(d,null,2);}
+  catch(e){const err=e.uiError||{title:e.message};document.getElementById('rawResponse').textContent=err.title+(err.detail?'\n'+err.detail:'');}
+}
+
+// EXPORTS
+function exportCSV(resource){
+  const rows=allData[resource];if(!rows.length){toast('No data','','error');return;}
+  const keys=Object.keys(rows[0]).filter(k=>typeof rows[0][k]!=='object');
+  const csv=[keys.join(','),...rows.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='yoco-'+resource+'-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  toast('Exported',rows.length+' '+resource,'success',3000);
+}
+function exportExcel(){
+  if(typeof XLSX==='undefined'){toast('XLSX not loaded','','error');return;}
+  const succ=allData.payments.filter(ok);
+  const rows=succ.map((p,i)=>({'#':i+1,'Date/Time':fmtD(p.created_at||p.createdAt),'Method':gm(p),'Gross (ZAR)':(ga(p)/100).toFixed(2),'Est. VAT (ZAR)':(Math.round(ga(p)*(15/115))/100).toFixed(2),'Net (ZAR)':((ga(p)-Math.round(ga(p)*(15/115)))/100).toFixed(2),'Status':p.status||'','Reference':p.externalReference||''}));
+  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Sales Ledger');
+  XLSX.writeFile(wb,'Yoco_Sales_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Excel exported',rows.length+' rows','success',3000);
+}
+
+// DRAWER
+function openDrawer(obj,label){
+  if(typeof obj==='string'){try{obj=JSON.parse(obj.replace(/&quot;/g,'"'));}catch(_){try{obj=JSON.parse(obj);}catch(_){return;}}}
+  document.getElementById('drawerTitle').textContent=label+' Details';
+  document.getElementById('drawerId').textContent=obj.id||'';
+  document.getElementById('drawerContent').innerHTML=`<div class="divide-y dark:divide-darkBorder">`+
+    Object.entries(obj).map(([k,v])=>{const isA=k.toLowerCase().includes('amount')&&typeof v==='number';const val=typeof v==='object'?JSON.stringify(v,null,2):String(v??'—');
+    return`<div class="py-3 flex justify-between gap-4"><span class="text-xs font-bold uppercase tracking-wide text-slate-400 flex-shrink-0 w-36">${k}</span><span class="text-xs font-mono text-right break-all">${isA?fmt(v):val}</span></div>`;}
+  ).join('')+'</div>';
+  document.getElementById('drawerOverlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('drawer').classList.remove('translate-x-full'),10);
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.add('translate-x-full');
+  setTimeout(()=>document.getElementById('drawerOverlay').classList.add('hidden'),300);
+}
+
+// ── INDUSTRY INSIGHTS ──
+let insightsDays=0;
+
+function setInsightsRange(d){
+  insightsDays=d;
+  const active='bg-white dark:bg-darkCard shadow-sm text-indigo-600 dark:text-indigo-400';
+  const inactive='text-slate-500';
+  [{id:'iRange0',v:0},{id:'iRange1',v:1},{id:'iRange7',v:7},{id:'iRange30',v:30}].forEach(o=>{
+    const el=document.getElementById(o.id);
+    if(el)el.className='px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all '+(o.v===d?active:inactive);
+  });
+  renderIndustryInsights();
+}
+
+function getInsightsPayments(){
+  if(!insightsDays)return allData.payments.filter(ok);
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-insightsDays);
+  return allData.payments.filter(p=>ok(p)&&new Date(p.created_at||p.createdAt||0)>=cutoff);
+}
+
+function renderIndustryInsights(){
+  const succ=getInsightsPayments();
+  const noData='<p class="text-sm text-slate-400">No data — connect your Yoco API key in Settings.</p>';
+  if(!succ.length){
+    ['servicePeriods','spendTiers','hospDeep','retailDeep','methodPerf'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=noData;});
+    return;
+  }
+  const gross=succ.reduce((s,p)=>s+ga(p),0);
+  const refTotal=allData.refunds.reduce((s,r)=>s+ga(r),0);
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+
+  const dbi={};succ.forEach(p=>{const dt=(p.created_at||p.createdAt||'').substring(0,10);if(dt){if(!dbi[dt])dbi[dt]={r:0,v:0};dbi[dt].r+=ga(p);dbi[dt].v++;}});
+  const dts=Object.keys(dbi);
+  const bestDt=dts.length?dts.reduce((a,b)=>dbi[a].r>dbi[b].r?a:b):'';
+  const activeDays=dts.length;
+
+  const periods=[
+    {name:'Breakfast',emoji:'☀️',hours:[6,7,8,9,10],color:'bg-amber-400'},
+    {name:'Lunch',emoji:'🍽',hours:[11,12,13,14],color:'bg-orange-400'},
+    {name:'Afternoon',emoji:'☕',hours:[15,16],color:'bg-yellow-400'},
+    {name:'Dinner',emoji:'🌆',hours:[17,18,19,20,21],color:'bg-violet-400'},
+    {name:'Late Night / Bar',emoji:'🌙',hours:[22,23,0,1,2,3,4,5],color:'bg-indigo-400'},
+  ];
+  const pd=periods.map(p=>{
+    const txns=succ.filter(t=>p.hours.includes(new Date(t.created_at||t.createdAt||0).getHours()));
+    const rev=txns.reduce((s,t)=>s+ga(t),0);
+    return{...p,txns:txns.length,rev};
+  });
+  const peakP=pd.reduce((a,b)=>b.rev>a.rev?b:a,pd[0]);
+  const totPD=pd.reduce((s,p)=>s+p.rev,0)||1;
+
+  set('iPeakPeriod',peakP.emoji+' '+peakP.name);
+  set('iPeakPeriodRev',fmt(peakP.rev)+' · '+peakP.txns+' txn');
+  set('iBestDay',bestDt?new Date(bestDt+'T12:00').toLocaleDateString('en-ZA',{weekday:'short',day:'2-digit',month:'short'}):'—');
+  set('iBestDayRev',bestDt?fmt(dbi[bestDt].r)+' · '+dbi[bestDt].v+' txn':'—');
+  set('iRefundRate',gross?((refTotal/gross)*100).toFixed(1)+'%':'0%');
+  set('iAvgDay',activeDays?fmt(Math.round(gross/activeDays)):'—');
+  set('iActiveDays',activeDays+' active trading days');
+
+  document.getElementById('servicePeriods').innerHTML=pd.map(p=>`
+    <div>
+      <div class="flex justify-between items-center mb-1.5">
+        <div class="flex items-center gap-2"><span class="text-base">${p.emoji}</span><span class="text-xs font-black">${p.name}</span></div>
+        <div class="text-right"><span class="text-xs font-black">${fmt(p.rev)}</span><span class="text-[10px] text-slate-400 ml-2">${p.txns} txn &middot; avg ${p.txns?fmt(Math.round(p.rev/p.txns)):'—'}</span></div>
+      </div>
+      <div class="method-bar-track"><div class="method-bar-fill ${p.color}" style="width:${Math.round(p.rev/totPD*100)}%"></div></div>
+    </div>`).join('');
+
+  const tiers=[
+    {l:'Quick  (under R50)',min:0,max:5000,c:'bg-slate-400',tag:'Impulse / beverage'},
+    {l:'Small  (R50 – R150)',min:5000,max:15000,c:'bg-amber-400',tag:'Light meal / snack'},
+    {l:'Mid  (R150 – R500)',min:15000,max:50000,c:'bg-indigo-400',tag:'Full meal / small item'},
+    {l:'Large  (R500 – R1k)',min:50000,max:100000,c:'bg-violet-400',tag:'Big basket / experience'},
+    {l:'Premium  (R1k+)',min:100000,max:Infinity,c:'bg-rose-400',tag:'High-value retail'},
+  ];
+  const tc=tiers.map(t=>{const txns=succ.filter(p=>ga(p)>=t.min&&ga(p)<t.max);return{...t,n:txns.length,r:txns.reduce((s,p)=>s+ga(p),0)};});
+  const mxT=Math.max(...tc.map(t=>t.n),1);
+  document.getElementById('spendTiers').innerHTML=tc.map(t=>`
+    <div>
+      <div class="flex justify-between mb-1">
+        <div><span class="text-xs font-black">${t.l}</span><span class="text-[10px] text-slate-400 block">${t.tag}</span></div>
+        <div class="text-right ml-3 flex-shrink-0"><span class="text-xs font-black">${t.n} txn</span><span class="text-[10px] text-slate-400 block">${fmt(t.r)}</span></div>
+      </div>
+      <div class="method-bar-track"><div class="method-bar-fill ${t.c}" style="width:${Math.round(t.n/mxT*100)}%"></div></div>
+    </div>`).join('');
+
+  const mm={};allData.payments.forEach(p=>{const m=gm(p);if(!mm[m])mm[m]={ok:0,tot:0,r:0};mm[m].tot++;if(ok(p)){mm[m].ok++;mm[m].r+=ga(p);}});
+  document.getElementById('methodPerf').innerHTML=Object.entries(mm).sort((a,b)=>b[1].r-a[1].r).map(([m,v])=>`
+    <div class="space-y-1.5">
+      <div class="flex justify-between items-center">${mBadge(m)}<span class="text-[10px] text-slate-400">${v.ok} ok / ${v.tot} total</span></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-2 text-center">
+          <div class="text-xs font-black text-slate-700 dark:text-slate-200">${v.ok?fmt(Math.round(v.r/v.ok)):'—'}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Avg ticket</div>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-2 text-center">
+          <div class="text-xs font-black ${v.tot&&v.ok/v.tot>=0.9?'text-emerald-600 dark:text-emerald-400':'text-amber-600 dark:text-amber-400'}">${v.tot?((v.ok/v.tot)*100).toFixed(0)+'%':'—'}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Success rate</div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const hospTxns=succ.filter(p=>ga(p)<=15000),hospRev=hospTxns.reduce((s,p)=>s+ga(p),0);
+  const mkSlice=(label,txns,color)=>`
+    <div class="flex justify-between items-center py-2 border-b dark:border-darkBorder last:border-0">
+      <span class="text-xs font-bold">${label}</span>
+      <div class="text-right"><span class="text-xs font-black ${color}">${txns.length}</span> <span class="text-[10px] text-slate-400">&middot; avg ${txns.length?fmt(Math.round(txns.reduce((s,p)=>s+ga(p),0)/txns.length)):'—'}</span></div>
+    </div>`;
+  const bkfst=succ.filter(p=>{const h=new Date(p.created_at||p.createdAt||0).getHours();return h>=6&&h<=10&&ga(p)<=15000;});
+  const lunch=succ.filter(p=>{const h=new Date(p.created_at||p.createdAt||0).getHours();return h>=11&&h<=14&&ga(p)<=15000;});
+  const dinner=succ.filter(p=>{const h=new Date(p.created_at||p.createdAt||0).getHours();return h>=17&&h<=21&&ga(p)<=15000;});
+  document.getElementById('hospDeep').innerHTML=`
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div class="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
+        <div class="text-base font-black text-orange-600 dark:text-orange-400">${fmt(hospRev)}</div>
+        <div class="text-[10px] font-bold text-slate-500 mt-0.5">Hospitality Revenue</div>
+      </div>
+      <div class="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
+        <div class="text-base font-black text-orange-600 dark:text-orange-400">${hospTxns.length?fmt(Math.round(hospRev/hospTxns.length)):'—'}</div>
+        <div class="text-[10px] font-bold text-slate-500 mt-0.5">Avg Cover Spend</div>
+      </div>
+    </div>
+    ${mkSlice('Breakfast covers',bkfst,'text-amber-600 dark:text-amber-400')}
+    ${mkSlice('Lunch covers',lunch,'text-orange-600 dark:text-orange-400')}
+    ${mkSlice('Dinner covers',dinner,'text-violet-600 dark:text-violet-400')}`;
+
+  const retailTxns=succ.filter(p=>ga(p)>15000),retailRev=retailTxns.reduce((s,p)=>s+ga(p),0);
+  const highVal=succ.filter(p=>ga(p)>100000),bigBasket=succ.filter(p=>ga(p)>50000);
+  document.getElementById('retailDeep').innerHTML=`
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div class="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
+        <div class="text-base font-black text-indigo-600 dark:text-indigo-400">${fmt(retailRev)}</div>
+        <div class="text-[10px] font-bold text-slate-500 mt-0.5">Retail Revenue</div>
+      </div>
+      <div class="bg-white/60 dark:bg-slate-800/60 rounded-xl p-3 text-center">
+        <div class="text-base font-black text-indigo-600 dark:text-indigo-400">${retailTxns.length?fmt(Math.round(retailRev/retailTxns.length)):'—'}</div>
+        <div class="text-[10px] font-bold text-slate-500 mt-0.5">Avg Basket Size</div>
+      </div>
+    </div>
+    <div class="flex justify-between items-center py-2 border-b dark:border-darkBorder">
+      <span class="text-xs font-bold">High-value sales (R1k+)</span>
+      <div class="text-right"><span class="text-xs font-black text-rose-500">${highVal.length} txn</span> <span class="text-[10px] text-slate-400">&middot; ${highVal.length?fmt(highVal.reduce((s,p)=>s+ga(p),0)):'—'}</span></div>
+    </div>
+    <div class="flex justify-between items-center py-2 border-b dark:border-darkBorder">
+      <span class="text-xs font-bold">Big basket (R500+)</span>
+      <div class="text-right"><span class="text-xs font-black text-violet-600 dark:text-violet-400">${bigBasket.length} txn</span> <span class="text-[10px] text-slate-400">&middot; ${bigBasket.length?fmt(bigBasket.reduce((s,p)=>s+ga(p),0)):'—'}</span></div>
+    </div>
+    <div class="flex justify-between items-center py-2">
+      <span class="text-xs font-bold">Retail share of revenue</span>
+      <div class="text-right"><span class="text-xs font-black text-indigo-600 dark:text-indigo-400">${gross?((retailRev/gross)*100).toFixed(1)+'%':'—'}</span> <span class="text-[10px] text-slate-400">&middot; ${retailTxns.length} txn</span></div>
+    </div>`;
+
+  renderInsightsHeatmap(succ);
+}
+
+function renderInsightsHeatmap(succ){
+  const canvas=document.getElementById('heatmapChart');
+  if(!canvas||canvas.offsetParent===null)return; // skip if canvas is hidden (0x0)
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const colors=['rgba(244,63,94,0.8)','rgba(99,102,241,0.8)','rgba(16,185,129,0.8)','rgba(245,158,11,0.8)','rgba(139,92,246,0.8)','rgba(59,130,246,0.8)','rgba(236,72,153,0.8)'];
+  const datasets=days.map((day,di)=>{
+    const hrs=Array.from({length:24},()=>0);
+    succ.filter(p=>new Date(p.created_at||p.createdAt||0).getDay()===di).forEach(p=>{hrs[new Date(p.created_at||p.createdAt||0).getHours()]+=ga(p);});
+    return{label:day,data:hrs.map(v=>v/100),borderColor:colors[di],backgroundColor:colors[di].replace('0.8','0.07'),tension:0.4,fill:false,pointRadius:2,borderWidth:1.5};
+  });
+  const d=cDef();
+  mkChart('heatmapChart',{type:'line',data:{labels:Array.from({length:24},(_,i)=>i.toString().padStart(2,'0')+'h'),datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{font:{size:9},color:d.tc,boxWidth:10,padding:6}}},scales:{x:{ticks:{color:d.tc,font:{size:9}},grid:{color:d.gc}},y:{ticks:{color:d.tc,font:{size:9},callback:v=>'R'+v},grid:{color:d.gc}}}}});
+}
+
+function exportInsightsExcel(){
+  if(typeof XLSX==='undefined'){toast('XLSX not loaded','','error');return;}
+  const succ=getInsightsPayments();
+  if(!succ.length){toast('No data to export','','error');return;}
+  const periods=[
+    {name:'Breakfast',hours:[6,7,8,9,10]},{name:'Lunch',hours:[11,12,13,14]},
+    {name:'Afternoon',hours:[15,16]},{name:'Dinner',hours:[17,18,19,20,21]},{name:'Late Night/Bar',hours:[22,23,0,1,2,3,4,5]},
+  ];
+  const rows=succ.map(p=>{
+    const h=new Date(p.created_at||p.createdAt||0).getHours();
+    const period=periods.find(per=>per.hours.includes(h))?.name||'Unknown';
+    const amt=ga(p);
+    return{'Date/Time':fmtD(p.created_at||p.createdAt),'Method':gm(p),'Gross (ZAR)':(amt/100).toFixed(2),'Est. VAT (ZAR)':(Math.round(amt*(15/115))/100).toFixed(2),'Net (ZAR)':((amt-Math.round(amt*(15/115)))/100).toFixed(2),'Service Period':period,'Segment':amt<=15000?'Hospitality':'Retail','Spend Tier':amt<5000?'Quick':amt<15000?'Small':amt<50000?'Mid':amt<100000?'Large':'Premium','Status':p.status||'','Reference':p.externalReference||''};
+  });
+  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Industry Insights');
+  XLSX.writeFile(wb,'Yoco_Insights_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Exported',rows.length+' rows with industry tags','success',3000);
+}
+
+// INIT
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+loadBiz();
+(function fbPoll(){
+  const dots=['fbDot','fbDot2'],txts=['fbText','fbText2'];
+  if(window._fbReady){
+    dots.forEach(id=>{const el=document.getElementById(id);if(el){el.style.background='#22c55e';el.style.width='8px';el.style.height='8px';el.style.borderRadius='50%';el.style.boxShadow='0 0 0 3px rgba(34,197,94,.2)';}});
+    txts.forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='Firebase ready';el.style.color='#22c55e';}});
+  }else setTimeout(fbPoll,400);
+})();
+
+</script>
+</body>
+</html>
